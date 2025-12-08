@@ -106,6 +106,13 @@
         const noteDisplay = document.getElementById('note-display');
         const statusDisplay = document.getElementById('status');
 
+        // Add a global touch listener to unlock audio on any tap
+        document.body.addEventListener('touchstart', function() {
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }, { passive: true });
+
         startBtn.addEventListener('click', async () => {
             // 1. User Interaction has happened. Now we can init Audio.
             statusDisplay.textContent = "Initializing Audio...";
@@ -175,14 +182,24 @@
         }
 
         function updatePitch() {
+            // Debug: Check if context died
+            if (audioContext && audioContext.state === 'suspended') {
+                 audioContext.resume();
+            }
+
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Float32Array(bufferLength);
             analyser.getFloatFrequencyData(dataArray);
 
             const maxVol = Math.max(...dataArray);
             
-            // Noise Gate (Adjusted for phone mics)
-            if (maxVol < -65) { 
+            // Show volume for debugging
+            if (Math.random() < 0.1) { // Update text less often to save CPU
+                statusDisplay.textContent = `Listening... Vol: ${Math.round(maxVol)} dB`;
+            }
+
+            // Noise Gate (Adjusted for phone mics) - Lowered to -90dB
+            if (maxVol < -90) { 
                 updateUI(0, "gray");
                 animationId = requestAnimationFrame(updatePitch);
                 return;
