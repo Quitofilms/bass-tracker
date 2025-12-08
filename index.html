@@ -56,8 +56,11 @@
         #status {
             position: absolute;
             bottom: 20px;
-            font-size: 12px;
-            color: #555;
+            font-size: 14px;
+            color: #888;
+            text-align: center;
+            width: 90%;
+            word-wrap: break-word;
         }
 
         /* Bass Profile Legend */
@@ -95,7 +98,6 @@
         let microphone;
         let animationId;
         
-        // Frequencies for Bass range note mapping
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         
         const startBtn = document.getElementById('start-btn');
@@ -105,62 +107,70 @@
         const statusDisplay = document.getElementById('status');
 
         startBtn.addEventListener('click', async () => {
-            startBtn.style.display = 'none';
+            // 1. User Interaction has happened. Now we can init Audio.
+            statusDisplay.textContent = "Initializing Audio...";
+            
             try {
-                // Request Wake Lock to keep screen on while singing
+                // Initialize Audio Context inside the click to appease iOS/Android
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                // FORCE WAKE UP:
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                startBtn.style.display = 'none';
+                
+                // Request Wake Lock
                 if ('wakeLock' in navigator) {
                     try { await navigator.wakeLock.request('screen'); } catch(err) {}
                 }
-                initAudio();
+
+                await initAudio();
+
             } catch (e) {
-                statusDisplay.textContent = "Error: " + e.message;
+                console.error(e);
+                statusDisplay.style.color = "red";
+                statusDisplay.textContent = "Error: " + e.message + " (" + e.name + ")";
                 startBtn.style.display = 'block';
             }
         });
 
         async function initAudio() {
-            // 1. Create Audio Context
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // MOBILE FIX 1: Explicitly resume the context (required by Chrome Android/Safari)
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
-            
             try {
+                // Simplified constraints for maximum mobile compatibility
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { 
                         echoCancellation: false,
                         autoGainControl: false,
-                        noiseSuppression: false,
-                        latency: 0 // Request low latency for Android
+                        noiseSuppression: false
                     } 
                 });
+
+                statusDisplay.textContent = "Microphone Connected.";
 
                 microphone = audioContext.createMediaStreamSource(stream);
                 analyser = audioContext.createAnalyser();
                 
-                // Use massive FFT size for Bass precision
+                // High precision for Bass
                 analyser.fftSize = 32768; 
                 analyser.smoothingTimeConstant = 0.85;
 
                 microphone.connect(analyser);
                 
-                // MOBILE FIX 2: KEEP ALIVE
-                // Connect microphone to destination with 0 volume.
-                // This tricks the Android Audio Policy into thinking we are playing audio,
-                // so it doesn't suspend the thread to save battery.
+                // --- MOBILE KEEP-ALIVE HACK ---
+                // We play 'silence' to the speakers to keep the audio thread active.
                 const forceActiveGain = audioContext.createGain();
-                forceActiveGain.gain.value = 0.0001; // Tiny non-zero value is safer than absolute 0
+                forceActiveGain.gain.value = 0.0001; 
                 microphone.connect(forceActiveGain);
                 forceActiveGain.connect(audioContext.destination);
                 
                 statusDisplay.textContent = "Listening...";
                 updatePitch();
             } catch (err) {
-                console.error(err);
-                statusDisplay.textContent = "Mic Access Denied or Error";
-                startBtn.style.display = 'block';
+                throw err; // Pass error up to the button handler
             }
         }
 
@@ -169,36 +179,30 @@
             const dataArray = new Float32Array(bufferLength);
             analyser.getFloatFrequencyData(dataArray);
 
-            // Simple noise gate based on max volume in dB
             const maxVol = Math.max(...dataArray);
-            if (maxVol < -60) { // Silence threshold
+            
+            // Noise Gate (Adjusted for phone mics)
+            if (maxVol < -65) { 
                 updateUI(0, "gray");
                 animationId = requestAnimationFrame(updatePitch);
                 return;
             }
 
-            // HPS (Harmonic Product Spectrum) Algorithm
-            // Since data is in dB, we ADD the harmonics instead of multiplying magnitudes
-            // HPS[k] = Data[k] + Data[2k] + Data[3k]...
-            
-            // We only care about bass range (40Hz to 400Hz) to save CPU
             const sampleRate = audioContext.sampleRate;
-            const resolution = sampleRate / analyser.fftSize; // ~1.3 Hz per bin
+            const resolution = sampleRate / analyser.fftSize;
             
-            const minBin = Math.floor(50 / resolution);  // Start at 50Hz
-            const maxBin = Math.floor(400 / resolution); // End at 400Hz
+            const minBin = Math.floor(60 / resolution);  // Raised slightly to 60Hz to avoid phone handling noise
+            const maxBin = Math.floor(400 / resolution);
             
             let maxHPS = -Infinity;
             let peakBin = -1;
 
             for (let i = minBin; i < maxBin; i++) {
-                // Check 3 harmonics
-                let h1 = dataArray[i];             // Fundamental
-                let h2 = dataArray[i * 2] || -100; // 1st Overtone
-                let h3 = dataArray[i * 3] || -100; // 2nd Overtone
+                let h1 = dataArray[i];             
+                let h2 = dataArray[i * 2] || -100; 
+                let h3 = dataArray[i * 3] || -100; 
                 
-                // Weighted sum (HPS in dB)
-                // We slightly favor the fundamental to avoid "octave up" errors common in phones
+                // HPS Logic
                 let hpsValue = h1 + (0.8 * h2) + (0.6 * h3);
                 
                 if (hpsValue > maxHPS) {
@@ -209,35 +213,25 @@
 
             const fundamentalFreq = peakBin * resolution;
             
-            // WECAM FIX (Simplified logic for JS)
-            // If the phone mic picks up a "fake" high note (e.g. 240Hz)
-            // but the energy is weird, we ignore it or smooth it.
-            // For now, raw HPS usually handles this better than simple Peak detection.
-            
             determineColor(fundamentalFreq);
             animationId = requestAnimationFrame(updatePitch);
         }
 
         function determineColor(freq) {
-            if (freq < 50) {
-                 // Ignore sub-bass rumble
-                 return;
-            }
+            // Ignore noise below floor
+            if (freq < 60) return; 
 
             const noteName = getNote(freq);
             hzDisplay.textContent = Math.round(freq) + " Hz";
             noteDisplay.textContent = noteName;
 
             if (freq < THRESHOLD_YELLOW) {
-                // GREEN ZONE (< 145 Hz)
-                circle.style.backgroundColor = "#00ff00"; // Bright Green
+                circle.style.backgroundColor = "#00ff00"; // Green
                 hzDisplay.style.color = "#fff";
             } else if (freq < THRESHOLD_RED) {
-                // YELLOW ZONE (145 - 154 Hz)
                 circle.style.backgroundColor = "#ffff00"; // Yellow
                 hzDisplay.style.color = "#ffff00";
             } else {
-                // RED ZONE (> 154 Hz)
                 circle.style.backgroundColor = "#ff0000"; // Red
                 hzDisplay.style.color = "#ff0000";
             }
@@ -253,7 +247,6 @@
         }
 
         function getNote(freq) {
-            // Formula to convert Hz to Note Name
             const noteNum = 12 * (Math.log(freq / 440) / Math.log(2));
             const noteIndex = Math.round(noteNum) + 69;
             const note = notes[noteIndex % 12];
