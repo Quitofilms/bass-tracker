@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bass Tone Tracker</title>
+    <style>
+        body {
+            background-color: #000;
+            color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #circle {
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background-color: #333; /* Default OFF color */
+            transition: background-color 0.1s ease;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        #hz-display {
+            margin-top: 40px;
+            font-size: 48px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #note-display {
+            font-size: 24px;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        #start-btn {
+            position: absolute;
+            z-index: 10;
+            padding: 20px 40px;
+            font-size: 24px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        #status {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            color: #555;
+        }
+
+        /* Bass Profile Legend */
+        .legend {
+            position: absolute;
+            top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="legend">
+        BASS PROFILE<br>
+        Green: < D3 (146Hz)<br>
+        Red: > D#3 (155Hz)
+    </div>
+
+    <button id="start-btn">Start Bass Tracker</button>
+    
+    <div id="circle"></div>
+    <div id="hz-display">-- Hz</div>
+    <div id="note-display">Silence</div>
+    <div id="status">Ready</div>
+
+    <script>
+        // --- CONFIGURATION FOR BASS SINGER ---
+        const THRESHOLD_YELLOW = 145; // Approx D3
+        const THRESHOLD_RED = 154;    // Approx D#3
+        
+        let audioContext;
+        let analyser;
+        let microphone;
+        let animationId;
+        
+        // Frequencies for Bass range note mapping
+        const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        
+        const startBtn = document.getElementById('start-btn');
+        const circle = document.getElementById('circle');
+        const hzDisplay = document.getElementById('hz-display');
+        const noteDisplay = document.getElementById('note-display');
+        const statusDisplay = document.getElementById('status');
+
+        startBtn.addEventListener('click', async () => {
+            startBtn.style.display = 'none';
+            try {
+                // Request Wake Lock to keep screen on while singing
+                if ('wakeLock' in navigator) {
+                    try { await navigator.wakeLock.request('screen'); } catch(err) {}
+                }
+                initAudio();
+            } catch (e) {
+                statusDisplay.textContent = "Error: " + e.message;
+                startBtn.style.display = 'block';
+            }
+        });
+
+        async function initAudio() {
+            // 1. Create Audio Context
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // MOBILE FIX 1: Explicitly resume the context (required by Chrome Android/Safari)
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        echoCancellation: false,
+                        autoGainControl: false,
+                        noiseSuppression: false,
+                        latency: 0 // Request low latency for Android
+                    } 
+                });
+
+                microphone = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                
+                // Use massive FFT size for Bass precision
+                analyser.fftSize = 32768; 
+                analyser.smoothingTimeConstant = 0.85;
+
+                microphone.connect(analyser);
+                
+                // MOBILE FIX 2: KEEP ALIVE
+                // Connect microphone to destination with 0 volume.
+                // This tricks the Android Audio Policy into thinking we are playing audio,
+                // so it doesn't suspend the thread to save battery.
+                const forceActiveGain = audioContext.createGain();
+                forceActiveGain.gain.value = 0.0001; // Tiny non-zero value is safer than absolute 0
+                microphone.connect(forceActiveGain);
+                forceActiveGain.connect(audioContext.destination);
+                
+                statusDisplay.textContent = "Listening...";
+                updatePitch();
+            } catch (err) {
+                console.error(err);
+                statusDisplay.textContent = "Mic Access Denied or Error";
+                startBtn.style.display = 'block';
+            }
+        }
+
+        function updatePitch() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Float32Array(bufferLength);
+            analyser.getFloatFrequencyData(dataArray);
+
+            // Simple noise gate based on max volume in dB
+            const maxVol = Math.max(...dataArray);
+            if (maxVol < -60) { // Silence threshold
+                updateUI(0, "gray");
+                animationId = requestAnimationFrame(updatePitch);
+                return;
+            }
+
+            // HPS (Harmonic Product Spectrum) Algorithm
+            // Since data is in dB, we ADD the harmonics instead of multiplying magnitudes
+            // HPS[k] = Data[k] + Data[2k] + Data[3k]...
+            
+            // We only care about bass range (40Hz to 400Hz) to save CPU
+            const sampleRate = audioContext.sampleRate;
+            const resolution = sampleRate / analyser.fftSize; // ~1.3 Hz per bin
+            
+            const minBin = Math.floor(50 / resolution);  // Start at 50Hz
+            const maxBin = Math.floor(400 / resolution); // End at 400Hz
+            
+            let maxHPS = -Infinity;
+            let peakBin = -1;
+
+            for (let i = minBin; i < maxBin; i++) {
+                // Check 3 harmonics
+                let h1 = dataArray[i];             // Fundamental
+                let h2 = dataArray[i * 2] || -100; // 1st Overtone
+                let h3 = dataArray[i * 3] || -100; // 2nd Overtone
+                
+                // Weighted sum (HPS in dB)
+                // We slightly favor the fundamental to avoid "octave up" errors common in phones
+                let hpsValue = h1 + (0.8 * h2) + (0.6 * h3);
+                
+                if (hpsValue > maxHPS) {
+                    maxHPS = hpsValue;
+                    peakBin = i;
+                }
+            }
+
+            const fundamentalFreq = peakBin * resolution;
+            
+            // WECAM FIX (Simplified logic for JS)
+            // If the phone mic picks up a "fake" high note (e.g. 240Hz)
+            // but the energy is weird, we ignore it or smooth it.
+            // For now, raw HPS usually handles this better than simple Peak detection.
+            
+            determineColor(fundamentalFreq);
+            animationId = requestAnimationFrame(updatePitch);
+        }
+
+        function determineColor(freq) {
+            if (freq < 50) {
+                 // Ignore sub-bass rumble
+                 return;
+            }
+
+            const noteName = getNote(freq);
+            hzDisplay.textContent = Math.round(freq) + " Hz";
+            noteDisplay.textContent = noteName;
+
+            if (freq < THRESHOLD_YELLOW) {
+                // GREEN ZONE (< 145 Hz)
+                circle.style.backgroundColor = "#00ff00"; // Bright Green
+                hzDisplay.style.color = "#fff";
+            } else if (freq < THRESHOLD_RED) {
+                // YELLOW ZONE (145 - 154 Hz)
+                circle.style.backgroundColor = "#ffff00"; // Yellow
+                hzDisplay.style.color = "#ffff00";
+            } else {
+                // RED ZONE (> 154 Hz)
+                circle.style.backgroundColor = "#ff0000"; // Red
+                hzDisplay.style.color = "#ff0000";
+            }
+        }
+
+        function updateUI(freq, color) {
+            if (freq === 0) {
+                circle.style.backgroundColor = "#333";
+                hzDisplay.textContent = "-- Hz";
+                hzDisplay.style.color = "#555";
+                noteDisplay.textContent = "Silence";
+            }
+        }
+
+        function getNote(freq) {
+            // Formula to convert Hz to Note Name
+            const noteNum = 12 * (Math.log(freq / 440) / Math.log(2));
+            const noteIndex = Math.round(noteNum) + 69;
+            const note = notes[noteIndex % 12];
+            const octave = Math.floor(noteIndex / 12) - 1;
+            return note + octave;
+        }
+    </script>
+</body>
+</html>
