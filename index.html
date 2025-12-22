@@ -1,9 +1,10 @@
+<!-- Bass Tone & Volume Tracker v1.4 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bass Tone Tracker</title>
+    <title>Bass Tone & Volume Tracker v1.4</title>
     <style>
         body {
             background-color: #000;
@@ -11,250 +12,737 @@
             font-family: 'Helvetica Neue', Arial, sans-serif;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
             height: 100vh;
             margin: 0;
             overflow: hidden;
+            user-select: none; /* Prevent text selection while dragging */
         }
 
+        /* =========================================
+           TOP SECTION: Calibration & Circle
+           ========================================= */
+        #top-section {
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end; 
+            position: relative;
+            background-color: #000;
+            min-height: 150px; 
+            padding-bottom: 10px; 
+        }
+
+        /* --- CALIBRATION SLIDER --- */
+        #calibration-bar {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            height: 80px; /* Height to fit 50px text */
+            z-index: 50;
+            overflow: hidden; /* Mask content */
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0));
+            display: flex;
+            align-items: center;
+            /* Fades on sides */
+            mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+        }
+
+        #calibration-strip {
+            display: flex;
+            align-items: center;
+            position: absolute;
+            left: 50%; /* Start positioning from center */
+            will-change: transform;
+            cursor: grab;
+        }
+
+        #calibration-strip:active {
+            cursor: grabbing;
+        }
+
+        .cal-note {
+            font-size: 50px;
+            font-weight: 900;
+            width: 70px; /* Fixed width for calculation stability */
+            text-align: center;
+            flex-shrink: 0;
+            transition: color 0.1s;
+            line-height: 1;
+            /* Text shadow for visibility */
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .cal-green { color: #00ff00; opacity: 0.6; }
+        .cal-yellow { color: #ffff00; transform: scale(1.1); opacity: 1; z-index: 10;}
+        .cal-red { color: #ff0000; opacity: 0.6; }
+
+        /* --- VISUALIZER --- */
         #circle {
-            width: 280px;
-            height: 280px;
+            width: 200px;
+            height: 200px;
             border-radius: 50%;
-            background-color: #333; /* Default OFF color */
+            background-color: #333;
             transition: background-color 0.1s ease;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            box-shadow: 0 0 60px rgba(0,0,0,0.6);
+            margin-bottom: 5px; 
+            z-index: 1;
+        }
+
+        /* =========================================
+           BOTTOM SECTION: Data & Controls
+           ========================================= */
+        #bottom-section {
+            width: 100%;
+            background-color: #111; 
+            border-top: 2px solid #333; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 10px; 
+            padding-bottom: 20px;
+            box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
+            z-index: 20;
+            flex-shrink: 0; 
         }
 
         #hz-display {
-            margin-top: 40px;
-            font-size: 48px;
-            font-weight: bold;
+            font-size: 20px; 
+            font-weight: normal;
+            color: #888; 
             font-variant-numeric: tabular-nums;
+            margin-bottom: 0px;
+            line-height: 1;
         }
 
         #note-display {
-            font-size: 24px;
-            color: #888;
-            margin-top: 10px;
-        }
-
-        #start-btn {
-            position: absolute;
-            z-index: 10;
-            padding: 20px 40px;
-            font-size: 24px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+            font-size: 50px; 
+            font-weight: 900; 
+            color: white;     
+            line-height: 1.1;
+            margin: 5px 0 10px 0;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
         #status {
-            position: absolute;
-            bottom: 20px;
             font-size: 14px;
-            color: #888;
-            text-align: center;
-            width: 90%;
-            word-wrap: break-word;
+            color: #555;
+            margin-bottom: 15px; 
+            height: 20px;
+            font-style: italic;
         }
 
-        /* Bass Profile Legend */
-        .legend {
-            position: absolute;
-            top: 20px;
-            font-size: 12px;
-            color: #666;
-            text-align: center;
+        #controls-wrapper {
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px; 
+            align-items: center;
         }
+
+        #start-btn {
+            width: 100%;
+            padding: 12px; 
+            font-size: 18px;
+            font-weight: bold;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+        #start-btn:hover { background: #1976D2; }
+
+        select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #222;
+            color: white;
+            font-family: monospace;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .slider-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px; 
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #aaa;
+            font-size: 12px;
+            padding: 0 5px;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            cursor: pointer;
+            height: 6px;
+            background: #444;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+            margin: 0 10px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #2196F3;
+            border-radius: 50%;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .adjust-btn {
+            flex: 1; 
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            padding: 10px 0; 
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s;
+        }
+
+        .adjust-btn:active { background: #2196F3; border-color: #2196F3; }
+
+        #meter-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        #meter-container {
+            width: 100%;
+            height: 15px; 
+            background-color: #222;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #444;
+        }
+
+        #meter-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336);
+            transition: width 0.1s ease-out;
+        }
+
+        #value-display {
+            font-family: monospace;
+            font-size: 12px;
+            color: #888;
+            text-align: right;
+            padding-right: 5px;
+        }
+
+        #error-msg { color: #ff5555; text-align: center; font-size: 12px; min-height: 15px;}
+        .hidden { display: none !important; }
+
     </style>
 </head>
 <body>
 
-    <div class="legend">
-        BASS PROFILE<br>
-        Green: < D3 (146Hz)<br>
-        Red: > D#3 (155Hz)
+    <!-- TOP: CALIBRATION & CIRCLE -->
+    <div id="top-section">
+        
+        <!-- Interactive Calibration Slider -->
+        <div id="calibration-bar">
+            <div id="calibration-strip">
+                <!-- JS will inject notes here -->
+            </div>
+        </div>
+
+        <div id="circle"></div>
     </div>
 
-    <button id="start-btn">Start Bass Tracker</button>
-    
-    <div id="circle"></div>
-    <div id="hz-display">-- Hz</div>
-    <div id="note-display">Silence</div>
-    <div id="status">Ready</div>
+    <!-- BOTTOM: DATA & CONTROLS -->
+    <div id="bottom-section">
+        <div id="hz-display">-- Hz</div>
+        <div id="note-display">Silence</div>
+        <div id="status">Ready</div>
+
+        <div id="controls-wrapper">
+            <button id="start-btn">Start</button>
+
+            <div class="slider-container" id="sens-container">
+                <div class="slider-header">
+                    <span>Sensitivity</span>
+                    <input type="range" id="sensitivity" min="1" max="1000" value="50">
+                    <span id="sens-val">x50</span>
+                </div>
+
+                <div class="button-row">
+                    <button id="sens-dec-10" class="adjust-btn">-10</button>
+                    <button id="sens-dec-1" class="adjust-btn">-1</button>
+                    <button id="sens-inc-1" class="adjust-btn">+1</button>
+                    <button id="sens-inc-10" class="adjust-btn">+10</button>
+                </div>
+            </div>
+
+            <select id="mic-select" class="hidden"></select>
+            
+            <div id="meter-wrapper">
+                <div id="meter-container">
+                    <div id="meter-fill"></div>
+                </div>
+                <div id="value-display">-- dB</div>
+            </div>
+
+            <div id="error-msg"></div>
+        </div>
+    </div>
 
     <script>
-        // --- CONFIGURATION FOR BASS SINGER ---
-        const THRESHOLD_YELLOW = 145; // Approx D3
-        const THRESHOLD_RED = 154;    // Approx D#3
-        
-        let audioContext;
-        let analyser;
-        let microphone;
-        let animationId;
-        
+        // --- CONFIGURATION ---
+        // Defaults (Will be overwritten by slider)
+        let breakFreq = 261.63; // Start at C4
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         
+        // --- CALIBRATION SLIDER LOGIC ---
+        const strip = document.getElementById('calibration-strip');
+        const NOTE_WIDTH = 70; // Must match CSS .cal-note width
+        const MIDI_START = 40; // E2
+        const MIDI_END = 72;   // C5
+        let notesElements = [];
+        let currentTranslate = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startTranslate = 0;
+
+        // Init Slider
+        function initSlider() {
+            // 1. Generate Notes
+            for (let m = MIDI_START; m <= MIDI_END; m++) {
+                const noteName = getNoteFromMidi(m);
+                const el = document.createElement('div');
+                el.className = 'cal-note';
+                el.textContent = noteName;
+                el.dataset.midi = m;
+                el.dataset.freq = 440 * Math.pow(2, (m - 69) / 12);
+                strip.appendChild(el);
+                notesElements.push(el);
+            }
+
+            // 2. Center on C4 (MIDI 60)
+            const c4Index = 60 - MIDI_START;
+            // Center calculation: 
+            // We want the center of the C4 element to be at X=0 (relative to strip center anchor)
+            // Strip is absolutely positioned left: 50%.
+            // So translate = - (Index * Width) - (Width/2)
+            currentTranslate = - (c4Index * NOTE_WIDTH) - (NOTE_WIDTH / 2);
+            setTranslate(currentTranslate);
+            updateCalibration();
+
+            // 3. Events
+            const container = document.getElementById('calibration-bar');
+            
+            // Mouse
+            container.addEventListener('mousedown', dragStart);
+            window.addEventListener('mouseup', dragEnd);
+            window.addEventListener('mousemove', drag);
+            
+            // Touch
+            container.addEventListener('touchstart', dragStart, {passive: false});
+            window.addEventListener('touchend', dragEnd);
+            window.addEventListener('touchmove', drag, {passive: false});
+        }
+
+        function getNoteFromMidi(midi) {
+            const note = notes[midi % 12];
+            const octave = Math.floor(midi / 12) - 1;
+            return note + octave;
+        }
+
+        function setTranslate(val) {
+            // Bounds checking (roughly)
+            const max = - (NOTE_WIDTH / 2); // Leftmost note (E2) at center
+            const min = - ((notesElements.length - 1) * NOTE_WIDTH) - (NOTE_WIDTH / 2); // Rightmost note at center
+            
+            // Allow some overdrag
+            if (val > max + 100) val = max + 100;
+            if (val < min - 100) val = min - 100;
+            
+            strip.style.transform = `translateX(${val}px)`;
+        }
+
+        function dragStart(e) {
+            isDragging = true;
+            startX = getPositionX(e);
+            startTranslate = currentTranslate;
+            strip.style.transition = 'none'; // Disable transition for direct control
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault(); // Prevent scroll
+            const currentX = getPositionX(e);
+            const diff = currentX - startX;
+            currentTranslate = startTranslate + diff;
+            setTranslate(currentTranslate);
+            updateCalibration();
+        }
+
+        function dragEnd() {
+            isDragging = false;
+            strip.style.transition = 'transform 0.2s ease-out';
+            // Optional: Snap to nearest note
+            const relativePos = Math.abs(currentTranslate); 
+            // Math is tricky here because translate is negative.
+            // Index = (-translate - width/2) / width
+            let rawIndex = (-currentTranslate - (NOTE_WIDTH/2)) / NOTE_WIDTH;
+            let snapIndex = Math.round(rawIndex);
+            
+            // Clamp index
+            snapIndex = Math.max(0, Math.min(notesElements.length - 1, snapIndex));
+            
+            currentTranslate = - (snapIndex * NOTE_WIDTH) - (NOTE_WIDTH / 2);
+            setTranslate(currentTranslate);
+            updateCalibration(); // Final update after snap
+        }
+
+        function getPositionX(e) {
+            return e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
+        }
+
+        function updateCalibration() {
+            // Determine which note is closest to center
+            // Logic inverse of translate calc
+            let centerIndex = Math.round((-currentTranslate - (NOTE_WIDTH/2)) / NOTE_WIDTH);
+            centerIndex = Math.max(0, Math.min(notesElements.length - 1, centerIndex));
+
+            // Visual Updates
+            notesElements.forEach((el, index) => {
+                el.className = 'cal-note'; // Reset
+                if (index < centerIndex) el.classList.add('cal-green');
+                else if (index > centerIndex) el.classList.add('cal-red');
+                else {
+                    el.classList.add('cal-yellow');
+                    // Update global break frequency
+                    breakFreq = parseFloat(el.dataset.freq);
+                }
+            });
+        }
+
+        // Initialize Slider on Load
+        initSlider();
+
+
+        // --- AUDIO GLOBALS ---
+        let audioContext;
+        let bassAnalyser;
+        let volAnalyser;
+        let microphone;
+        let isRunning = false;
+        let currentStream = null;
+        let bassDataArray;
+        let volDataArray;
+        let silenceTimer = 0;
+
+        // --- DOM ELEMENTS ---
         const startBtn = document.getElementById('start-btn');
+        const micSelect = document.getElementById('mic-select');
+        const errorMsg = document.getElementById('error-msg');
+        
+        const meterFill = document.getElementById('meter-fill');
+        const valueDisplay = document.getElementById('value-display');
+        const sensitivitySlider = document.getElementById('sensitivity');
+        const sensValDisplay = document.getElementById('sens-val');
+        
         const circle = document.getElementById('circle');
         const hzDisplay = document.getElementById('hz-display');
         const noteDisplay = document.getElementById('note-display');
         const statusDisplay = document.getElementById('status');
 
-        // Add a global touch listener to unlock audio on any tap
+        // --- EVENT LISTENERS ---
+
         document.body.addEventListener('touchstart', function() {
             if (audioContext && audioContext.state === 'suspended') {
                 audioContext.resume();
             }
         }, { passive: true });
 
+        // Sensitivity Controls
+        function updateSensDisplay() {
+            sensValDisplay.textContent = 'x' + sensitivitySlider.value;
+        }
+
+        function adjustSensitivity(amount) {
+            let current = parseInt(sensitivitySlider.value);
+            let newValue = current + amount;
+            newValue = Math.max(1, Math.min(1000, newValue));
+            sensitivitySlider.value = newValue;
+            updateSensDisplay();
+            localStorage.setItem('bass_sens', newValue);
+        }
+
+        updateSensDisplay();
+
+        sensitivitySlider.addEventListener('input', () => {
+            updateSensDisplay();
+            localStorage.setItem('bass_sens', sensitivitySlider.value);
+        });
+
+        document.getElementById('sens-dec-10').addEventListener('click', () => adjustSensitivity(-10));
+        document.getElementById('sens-dec-1').addEventListener('click', () => adjustSensitivity(-1));
+        document.getElementById('sens-inc-1').addEventListener('click', () => adjustSensitivity(1));
+        document.getElementById('sens-inc-10').addEventListener('click', () => adjustSensitivity(10));
+
+        // Start & Mic Select
         startBtn.addEventListener('click', async () => {
-            // 1. User Interaction has happened. Now we can init Audio.
-            statusDisplay.textContent = "Initializing Audio...";
-            
+            await startAudio();
+        });
+
+        micSelect.addEventListener('change', async (e) => {
+            localStorage.setItem('bass_mic_id', e.target.value);
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            await startAudio(e.target.value);
+        });
+
+        // --- AUDIO INITIALIZATION ---
+
+        async function startAudio(deviceId = null) {
             try {
-                // Initialize Audio Context inside the click to appease iOS/Android
+                errorMsg.textContent = "";
+                statusDisplay.textContent = "Initializing...";
+
                 if (!audioContext) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
 
-                // FORCE WAKE UP:
                 if (audioContext.state === 'suspended') {
                     await audioContext.resume();
                 }
 
-                startBtn.style.display = 'none';
+                startBtn.classList.add('hidden');
+                micSelect.classList.remove('hidden');
                 
-                // Request Wake Lock
+                if (!deviceId) {
+                    const savedMic = localStorage.getItem('bass_mic_id');
+                    const savedSens = localStorage.getItem('bass_sens');
+                    if (savedSens) {
+                        sensitivitySlider.value = savedSens;
+                        updateSensDisplay();
+                    }
+                    if (savedMic) deviceId = savedMic;
+                }
+                
                 if ('wakeLock' in navigator) {
                     try { await navigator.wakeLock.request('screen'); } catch(err) {}
                 }
 
-                await initAudio();
-
-            } catch (e) {
-                console.error(e);
-                statusDisplay.style.color = "red";
-                statusDisplay.textContent = "Error: " + e.message + " (" + e.name + ")";
-                startBtn.style.display = 'block';
-            }
-        });
-
-        async function initAudio() {
-            try {
-                // Simplified constraints for maximum mobile compatibility
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                const constraints = { 
                     audio: { 
+                        deviceId: deviceId ? { exact: deviceId } : undefined,
                         echoCancellation: false,
-                        autoGainControl: false,
-                        noiseSuppression: false
+                        noiseSuppression: false,
+                        autoGainControl: false 
                     } 
-                });
+                };
 
-                statusDisplay.textContent = "Microphone Connected.";
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
+
+                if (microphone) microphone.disconnect();
+                if (bassAnalyser) bassAnalyser.disconnect();
+                if (volAnalyser) volAnalyser.disconnect();
 
                 microphone = audioContext.createMediaStreamSource(stream);
-                analyser = audioContext.createAnalyser();
-                
-                // High precision for Bass
-                analyser.fftSize = 32768; 
-                analyser.smoothingTimeConstant = 0.85;
 
-                microphone.connect(analyser);
-                
-                // --- MOBILE KEEP-ALIVE HACK ---
-                // We play 'silence' to the speakers to keep the audio thread active.
-                const forceActiveGain = audioContext.createGain();
-                forceActiveGain.gain.value = 0.0001; 
-                microphone.connect(forceActiveGain);
-                forceActiveGain.connect(audioContext.destination);
-                
+                bassAnalyser = audioContext.createAnalyser();
+                bassAnalyser.fftSize = 32768; 
+                bassAnalyser.smoothingTimeConstant = 0.85;
+                microphone.connect(bassAnalyser);
+                bassDataArray = new Float32Array(bassAnalyser.frequencyBinCount);
+
+                volAnalyser = audioContext.createAnalyser();
+                volAnalyser.fftSize = 2048; 
+                volAnalyser.smoothingTimeConstant = 0.3;
+                microphone.connect(volAnalyser);
+                volDataArray = new Float32Array(volAnalyser.fftSize);
+
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 0.0; 
+                microphone.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                if (micSelect.options.length === 0) {
+                    await populateDeviceList();
+                }
+
+                const currentTrack = currentStream.getAudioTracks()[0];
+                const settings = currentTrack.getSettings();
+                if (settings.deviceId) {
+                    micSelect.value = settings.deviceId;
+                    localStorage.setItem('bass_mic_id', settings.deviceId);
+                }
+
                 statusDisplay.textContent = "Listening...";
-                updatePitch();
+                
+                if (!isRunning) {
+                    isRunning = true;
+                    animationLoop();
+                }
+
             } catch (err) {
-                throw err; // Pass error up to the button handler
+                console.error(err);
+                if (err.name === 'OverconstrainedError' && localStorage.getItem('bass_mic_id')) {
+                    localStorage.removeItem('bass_mic_id');
+                    return startAudio(null);
+                }
+                startBtn.classList.remove('hidden');
+                errorMsg.textContent = "Error: " + err.message;
             }
         }
 
+        async function populateDeviceList() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                
+                micSelect.innerHTML = '';
+                audioInputs.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Microphone ${micSelect.length + 1}`;
+                    micSelect.appendChild(option);
+                });
+                
+                if (currentStream) {
+                    const track = currentStream.getAudioTracks()[0];
+                    if (track && track.getSettings().deviceId) {
+                        micSelect.value = track.getSettings().deviceId;
+                    }
+                }
+
+            } catch (e) {
+                console.error("Device list error", e);
+            }
+        }
+
+        // --- MAIN LOOP ---
+
+        function animationLoop() {
+            if (!isRunning) return;
+            updateVolume();
+            updatePitch();
+            requestAnimationFrame(animationLoop);
+        }
+
+        function updateVolume() {
+            volAnalyser.getFloatTimeDomainData(volDataArray);
+            let sumSquares = 0.0;
+            for (const amplitude of volDataArray) sumSquares += amplitude * amplitude;
+            let rms = Math.sqrt(sumSquares / volDataArray.length);
+
+            if (rms < 0.0001) {
+                silenceTimer++;
+                if (silenceTimer > 180) errorMsg.textContent = "No signal. Check Mic.";
+            } else {
+                silenceTimer = 0;
+                errorMsg.textContent = "";
+            }
+
+            const boost = parseFloat(sensitivitySlider.value);
+            const boostedRMS = rms * boost;
+            let db = 20 * Math.log10(rms);
+            if (!isFinite(db)) db = -100;
+            let visualWidth = Math.min(Math.sqrt(boostedRMS), 1.0);
+            meterFill.style.width = (visualWidth * 100) + "%";
+            valueDisplay.innerHTML = `${Math.round(db)} dB`;
+            if (rms === 0) valueDisplay.style.color = "#555";
+            else valueDisplay.style.color = "#aaa";
+        }
+
         function updatePitch() {
-            // Debug: Check if context died
-            if (audioContext && audioContext.state === 'suspended') {
-                 audioContext.resume();
-            }
-
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Float32Array(bufferLength);
-            analyser.getFloatFrequencyData(dataArray);
-
-            const maxVol = Math.max(...dataArray);
-            
-            // Show volume for debugging
-            if (Math.random() < 0.1) { // Update text less often to save CPU
-                statusDisplay.textContent = `Listening... Vol: ${Math.round(maxVol)} dB`;
-            }
-
-            // Noise Gate (Adjusted for phone mics) - Lowered to -90dB
-            if (maxVol < -90) { 
-                updateUI(0, "gray");
-                animationId = requestAnimationFrame(updatePitch);
-                return;
-            }
-
+            bassAnalyser.getFloatFrequencyData(bassDataArray);
             const sampleRate = audioContext.sampleRate;
-            const resolution = sampleRate / analyser.fftSize;
-            
-            const minBin = Math.floor(60 / resolution);  // Raised slightly to 60Hz to avoid phone handling noise
+            const resolution = sampleRate / bassAnalyser.fftSize;
+            const minBin = Math.floor(60 / resolution); 
             const maxBin = Math.floor(400 / resolution);
             
             let maxHPS = -Infinity;
             let peakBin = -1;
 
             for (let i = minBin; i < maxBin; i++) {
-                let h1 = dataArray[i];             
-                let h2 = dataArray[i * 2] || -100; 
-                let h3 = dataArray[i * 3] || -100; 
-                
-                // HPS Logic
+                let h1 = bassDataArray[i];              
+                let h2 = bassDataArray[i * 2] || -100; 
+                let h3 = bassDataArray[i * 3] || -100; 
+                if (h1 < -90) continue;
                 let hpsValue = h1 + (0.8 * h2) + (0.6 * h3);
-                
                 if (hpsValue > maxHPS) {
                     maxHPS = hpsValue;
                     peakBin = i;
                 }
             }
 
+            const maxVol = Math.max(...bassDataArray);
+            if (maxVol < -90) {
+                 updateBassUI(0);
+                 return;
+            }
+
             const fundamentalFreq = peakBin * resolution;
-            
             determineColor(fundamentalFreq);
-            animationId = requestAnimationFrame(updatePitch);
         }
 
         function determineColor(freq) {
-            // Ignore noise below floor
             if (freq < 60) return; 
 
             const noteName = getNote(freq);
             hzDisplay.textContent = Math.round(freq) + " Hz";
             noteDisplay.textContent = noteName;
 
-            if (freq < THRESHOLD_YELLOW) {
-                circle.style.backgroundColor = "#00ff00"; // Green
+            // Updated Color Logic based on Calibration Slider
+            // breakFreq is determined by the center slider note
+            // We use a small tolerance (approx semitone) for Yellow
+            
+            // Calculate semitone distance from breakFreq
+            // 12 * log2(freq / breakFreq)
+            const semitonesDiff = 12 * Math.log2(freq / breakFreq);
+
+            if (semitonesDiff < -0.5) {
+                // Lower than break = Green (Bass)
+                circle.style.backgroundColor = "#00ff00"; 
                 hzDisplay.style.color = "#fff";
-            } else if (freq < THRESHOLD_RED) {
-                circle.style.backgroundColor = "#ffff00"; // Yellow
-                hzDisplay.style.color = "#ffff00";
-            } else {
-                circle.style.backgroundColor = "#ff0000"; // Red
+            } else if (semitonesDiff > 0.5) {
+                // Higher than break = Red
+                circle.style.backgroundColor = "#ff0000"; 
                 hzDisplay.style.color = "#ff0000";
+            } else {
+                // Within 0.5 semitones = Yellow (The Break)
+                circle.style.backgroundColor = "#ffff00"; 
+                hzDisplay.style.color = "#ffff00";
             }
         }
 
-        function updateUI(freq, color) {
+        function updateBassUI(freq) {
             if (freq === 0) {
                 circle.style.backgroundColor = "#333";
                 hzDisplay.textContent = "-- Hz";
@@ -270,6 +758,7 @@
             const octave = Math.floor(noteIndex / 12) - 1;
             return note + octave;
         }
+
     </script>
 </body>
 </html>
