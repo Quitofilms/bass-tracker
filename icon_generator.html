@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Generator</title>
+    <style>
+        body { 
+            background: #222; 
+            color: white; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            gap: 20px;
+        }
+        canvas {
+            border: 2px solid #555;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+
+    <h2>App Icon Generator</h2>
+    <p>Preview (512x512)</p>
+    <canvas id="iconCanvas" width="512" height="512"></canvas>
+
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button onclick="downloadIcon(192)">Download icon-192.png</button>
+        <button onclick="downloadIcon(512)">Download icon-512.png</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('iconCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Draw the Icon
+        function drawIcon() {
+            // 1. Background
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, 512, 512);
+
+            // 2. The Circle (Bass Visualizer style)
+            const centerX = 256;
+            const centerY = 256;
+            const radius = 200;
+
+            // Gradient for the circle
+            const gradient = ctx.createLinearGradient(0, 512, 512, 0);
+            gradient.addColorStop(0, "#00ff00"); // Green
+            gradient.addColorStop(0.5, "#ffff00"); // Yellow
+            gradient.addColorStop(1, "#ff0000"); // Red
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // 3. Inner Circle (to make it look like a ring/speaker)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.8, 0, 2 * Math.PI, false);
+            ctx.fillStyle = "#111"; // Slightly lighter than black bg
+            ctx.fill();
+
+            // 4. Text "BASS"
+            ctx.fillStyle = "white";
+            ctx.font = "bold 100px Helvetica, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("BASS", centerX, centerY);
+        }
+
+        function downloadIcon(size) {
+            // Create a temporary canvas to resize if needed
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Draw the main canvas onto the temp canvas
+            tempCtx.drawImage(canvas, 0, 0, size, size);
+
+            // Trigger Download
+            const link = document.createElement('a');
+            link.download = `icon-${size}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Initialize
+        drawIcon();
+    </script>
+</body>
+</html>
