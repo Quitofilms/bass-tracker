@@ -1,10 +1,16 @@
-<!-- Bass Tone & Volume Tracker v1.4 -->
+<!-- Bass Tone & Volume Tracker v1.4 (PWA) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
     <title>Bass Tone & Volume Tracker v1.4</title>
+    
+    <!-- PWA Link -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <style>
         body {
             background-color: #000;
@@ -318,6 +324,15 @@
     </div>
 
     <script>
+        // --- PWA REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker failed', err));
+            });
+        }
+
         // --- CONFIGURATION ---
         // Defaults (Will be overwritten by slider)
         let breakFreq = 261.63; // Start at C4
