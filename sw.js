@@ -1,15 +1,14 @@
-const CACHE_NAME = 'bass-tracker-v1.4';
+const CACHE_NAME = 'bass-tracker-v1.5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json'
-  // If you add icons later, uncomment these lines:
-  // './icon-192.png',
-  // './icon-512.png'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
-// Install Event: Cache files
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -17,7 +16,6 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate Event: Clean up old caches
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keyList) => {
@@ -28,9 +26,9 @@ self.addEventListener('activate', (e) => {
       }));
     })
   );
+  return self.clients.claim();
 });
 
-// Fetch Event: Serve from Cache, fall back to Network
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((response) => {
