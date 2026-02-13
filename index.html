@@ -1,13 +1,11 @@
-<!-- Bass Tone & Volume Tracker v1.4 (PWA) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tone & Volume Tracker v1.4</title>
+    <title>Bass Tone & Volume Tracker v1.5</title>
     
-    <!-- PWA Link -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -164,6 +162,14 @@
         }
         #start-btn:hover { background: #1976D2; }
 
+        /* Style for the Stop state */
+        #start-btn.stop-active {
+            background: #f44336; 
+        }
+        #start-btn.stop-active:hover {
+            background: #d32f2f;
+        }
+
         select {
             padding: 10px;
             border-radius: 8px;
@@ -273,20 +279,16 @@
 </head>
 <body>
 
-    <!-- TOP: CALIBRATION & CIRCLE -->
     <div id="top-section">
         
-        <!-- Interactive Calibration Slider -->
         <div id="calibration-bar">
             <div id="calibration-strip">
-                <!-- JS will inject notes here -->
-            </div>
+                </div>
         </div>
 
         <div id="circle"></div>
     </div>
 
-    <!-- BOTTOM: DATA & CONTROLS -->
     <div id="bottom-section">
         <div id="hz-display">-- Hz</div>
         <div id="note-display">Silence</div>
@@ -334,13 +336,12 @@
         }
 
         // --- CONFIGURATION ---
-        // Defaults (Will be overwritten by slider)
         let breakFreq = 261.63; // Start at C4
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         
         // --- CALIBRATION SLIDER LOGIC ---
         const strip = document.getElementById('calibration-strip');
-        const NOTE_WIDTH = 70; // Must match CSS .cal-note width
+        const NOTE_WIDTH = 70; 
         const MIDI_START = 40; // E2
         const MIDI_END = 72;   // C5
         let notesElements = [];
@@ -349,9 +350,7 @@
         let startX = 0;
         let startTranslate = 0;
 
-        // Init Slider
         function initSlider() {
-            // 1. Generate Notes
             for (let m = MIDI_START; m <= MIDI_END; m++) {
                 const noteName = getNoteFromMidi(m);
                 const el = document.createElement('div');
@@ -363,25 +362,15 @@
                 notesElements.push(el);
             }
 
-            // 2. Center on C4 (MIDI 60)
             const c4Index = 60 - MIDI_START;
-            // Center calculation: 
-            // We want the center of the C4 element to be at X=0 (relative to strip center anchor)
-            // Strip is absolutely positioned left: 50%.
-            // So translate = - (Index * Width) - (Width/2)
             currentTranslate = - (c4Index * NOTE_WIDTH) - (NOTE_WIDTH / 2);
             setTranslate(currentTranslate);
             updateCalibration();
 
-            // 3. Events
             const container = document.getElementById('calibration-bar');
-            
-            // Mouse
             container.addEventListener('mousedown', dragStart);
             window.addEventListener('mouseup', dragEnd);
             window.addEventListener('mousemove', drag);
-            
-            // Touch
             container.addEventListener('touchstart', dragStart, {passive: false});
             window.addEventListener('touchend', dragEnd);
             window.addEventListener('touchmove', drag, {passive: false});
@@ -394,14 +383,10 @@
         }
 
         function setTranslate(val) {
-            // Bounds checking (roughly)
-            const max = - (NOTE_WIDTH / 2); // Leftmost note (E2) at center
-            const min = - ((notesElements.length - 1) * NOTE_WIDTH) - (NOTE_WIDTH / 2); // Rightmost note at center
-            
-            // Allow some overdrag
+            const max = - (NOTE_WIDTH / 2); 
+            const min = - ((notesElements.length - 1) * NOTE_WIDTH) - (NOTE_WIDTH / 2); 
             if (val > max + 100) val = max + 100;
             if (val < min - 100) val = min - 100;
-            
             strip.style.transform = `translateX(${val}px)`;
         }
 
@@ -409,12 +394,12 @@
             isDragging = true;
             startX = getPositionX(e);
             startTranslate = currentTranslate;
-            strip.style.transition = 'none'; // Disable transition for direct control
+            strip.style.transition = 'none';
         }
 
         function drag(e) {
             if (!isDragging) return;
-            e.preventDefault(); // Prevent scroll
+            e.preventDefault(); 
             const currentX = getPositionX(e);
             const diff = currentX - startX;
             currentTranslate = startTranslate + diff;
@@ -425,19 +410,12 @@
         function dragEnd() {
             isDragging = false;
             strip.style.transition = 'transform 0.2s ease-out';
-            // Optional: Snap to nearest note
-            const relativePos = Math.abs(currentTranslate); 
-            // Math is tricky here because translate is negative.
-            // Index = (-translate - width/2) / width
             let rawIndex = (-currentTranslate - (NOTE_WIDTH/2)) / NOTE_WIDTH;
             let snapIndex = Math.round(rawIndex);
-            
-            // Clamp index
             snapIndex = Math.max(0, Math.min(notesElements.length - 1, snapIndex));
-            
             currentTranslate = - (snapIndex * NOTE_WIDTH) - (NOTE_WIDTH / 2);
             setTranslate(currentTranslate);
-            updateCalibration(); // Final update after snap
+            updateCalibration();
         }
 
         function getPositionX(e) {
@@ -445,27 +423,21 @@
         }
 
         function updateCalibration() {
-            // Determine which note is closest to center
-            // Logic inverse of translate calc
             let centerIndex = Math.round((-currentTranslate - (NOTE_WIDTH/2)) / NOTE_WIDTH);
             centerIndex = Math.max(0, Math.min(notesElements.length - 1, centerIndex));
 
-            // Visual Updates
             notesElements.forEach((el, index) => {
-                el.className = 'cal-note'; // Reset
+                el.className = 'cal-note'; 
                 if (index < centerIndex) el.classList.add('cal-green');
                 else if (index > centerIndex) el.classList.add('cal-red');
                 else {
                     el.classList.add('cal-yellow');
-                    // Update global break frequency
                     breakFreq = parseFloat(el.dataset.freq);
                 }
             });
         }
 
-        // Initialize Slider on Load
         initSlider();
-
 
         // --- AUDIO GLOBALS ---
         let audioContext;
@@ -482,26 +454,16 @@
         const startBtn = document.getElementById('start-btn');
         const micSelect = document.getElementById('mic-select');
         const errorMsg = document.getElementById('error-msg');
-        
         const meterFill = document.getElementById('meter-fill');
         const valueDisplay = document.getElementById('value-display');
         const sensitivitySlider = document.getElementById('sensitivity');
         const sensValDisplay = document.getElementById('sens-val');
-        
         const circle = document.getElementById('circle');
         const hzDisplay = document.getElementById('hz-display');
         const noteDisplay = document.getElementById('note-display');
         const statusDisplay = document.getElementById('status');
 
-        // --- EVENT LISTENERS ---
-
-        document.body.addEventListener('touchstart', function() {
-            if (audioContext && audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-        }, { passive: true });
-
-        // Sensitivity Controls
+        // --- SENSITIVITY ---
         function updateSensDisplay() {
             sensValDisplay.textContent = 'x' + sensitivitySlider.value;
         }
@@ -527,9 +489,19 @@
         document.getElementById('sens-inc-1').addEventListener('click', () => adjustSensitivity(1));
         document.getElementById('sens-inc-10').addEventListener('click', () => adjustSensitivity(10));
 
-        // Start & Mic Select
+        // --- START / STOP TOGGLE ---
         startBtn.addEventListener('click', async () => {
-            await startAudio();
+            if (!isRunning) {
+                await startAudio();
+                if (isRunning) {
+                    startBtn.textContent = "Stop";
+                    startBtn.classList.add('stop-active');
+                }
+            } else {
+                stopAudio();
+                startBtn.textContent = "Start";
+                startBtn.classList.remove('stop-active');
+            }
         });
 
         micSelect.addEventListener('change', async (e) => {
@@ -540,8 +512,6 @@
             await startAudio(e.target.value);
         });
 
-        // --- AUDIO INITIALIZATION ---
-
         async function startAudio(deviceId = null) {
             try {
                 errorMsg.textContent = "";
@@ -550,12 +520,10 @@
                 if (!audioContext) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
-
                 if (audioContext.state === 'suspended') {
                     await audioContext.resume();
                 }
 
-                startBtn.classList.add('hidden');
                 micSelect.classList.remove('hidden');
                 
                 if (!deviceId) {
@@ -619,11 +587,8 @@
                 }
 
                 statusDisplay.textContent = "Listening...";
-                
-                if (!isRunning) {
-                    isRunning = true;
-                    animationLoop();
-                }
+                isRunning = true;
+                animationLoop();
 
             } catch (err) {
                 console.error(err);
@@ -631,16 +596,30 @@
                     localStorage.removeItem('bass_mic_id');
                     return startAudio(null);
                 }
-                startBtn.classList.remove('hidden');
                 errorMsg.textContent = "Error: " + err.message;
             }
+        }
+
+        function stopAudio() {
+            isRunning = false;
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            if (microphone) microphone.disconnect();
+            if (bassAnalyser) bassAnalyser.disconnect();
+            if (volAnalyser) volAnalyser.disconnect();
+
+            statusDisplay.textContent = "Stopped";
+            updateBassUI(0);
+            meterFill.style.width = "0%";
+            valueDisplay.innerHTML = "-- dB";
         }
 
         async function populateDeviceList() {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioInputs = devices.filter(device => device.kind === 'audioinput');
-                
                 micSelect.innerHTML = '';
                 audioInputs.forEach(device => {
                     const option = document.createElement('option');
@@ -648,20 +627,10 @@
                     option.text = device.label || `Microphone ${micSelect.length + 1}`;
                     micSelect.appendChild(option);
                 });
-                
-                if (currentStream) {
-                    const track = currentStream.getAudioTracks()[0];
-                    if (track && track.getSettings().deviceId) {
-                        micSelect.value = track.getSettings().deviceId;
-                    }
-                }
-
             } catch (e) {
                 console.error("Device list error", e);
             }
         }
-
-        // --- MAIN LOOP ---
 
         function animationLoop() {
             if (!isRunning) return;
@@ -691,8 +660,7 @@
             let visualWidth = Math.min(Math.sqrt(boostedRMS), 1.0);
             meterFill.style.width = (visualWidth * 100) + "%";
             valueDisplay.innerHTML = `${Math.round(db)} dB`;
-            if (rms === 0) valueDisplay.style.color = "#555";
-            else valueDisplay.style.color = "#aaa";
+            valueDisplay.style.color = (rms === 0) ? "#555" : "#aaa";
         }
 
         function updatePitch() {
@@ -734,24 +702,15 @@
             hzDisplay.textContent = Math.round(freq) + " Hz";
             noteDisplay.textContent = noteName;
 
-            // Updated Color Logic based on Calibration Slider
-            // breakFreq is determined by the center slider note
-            // We use a small tolerance (approx semitone) for Yellow
-            
-            // Calculate semitone distance from breakFreq
-            // 12 * log2(freq / breakFreq)
             const semitonesDiff = 12 * Math.log2(freq / breakFreq);
 
             if (semitonesDiff < -0.5) {
-                // Lower than break = Green (Bass)
                 circle.style.backgroundColor = "#00ff00"; 
                 hzDisplay.style.color = "#fff";
             } else if (semitonesDiff > 0.5) {
-                // Higher than break = Red
                 circle.style.backgroundColor = "#ff0000"; 
                 hzDisplay.style.color = "#ff0000";
             } else {
-                // Within 0.5 semitones = Yellow (The Break)
                 circle.style.backgroundColor = "#ffff00"; 
                 hzDisplay.style.color = "#ffff00";
             }
