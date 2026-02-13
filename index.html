@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tone & Volume Tracker v1.6</title>
+    <title>Bass Tracker v1.8</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,497 +14,248 @@
             background-color: #000;
             color: white;
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
             margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: grid;
+            /* Fixed Grid: Calibration(100px), Circle(Fr), Data(140px), Controls(220px) */
+            grid-template-rows: 100px 1fr 140px 240px;
             overflow: hidden;
             user-select: none;
         }
 
-        #top-section {
-            flex: 1; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end; 
+        /* ROW 1: CALIBRATION */
+        #top-nav {
+            grid-row: 1;
             position: relative;
-            background-color: #000;
-            min-height: 150px; 
-            padding-bottom: 10px; 
-        }
-
-        #calibration-bar {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            height: 80px;
-            z-index: 50;
             overflow: hidden;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0));
-            display: flex;
-            align-items: center;
+            background: #000;
             mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
         }
-
         #calibration-strip {
             display: flex;
             align-items: center;
             position: absolute;
+            top: 10px;
             left: 50%;
             will-change: transform;
-            cursor: grab;
         }
-
         .cal-note {
             font-size: 50px;
             font-weight: 900;
             width: 70px;
             text-align: center;
             flex-shrink: 0;
-            transition: color 0.1s;
-            line-height: 1;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
         }
+        .cal-green { color: #00ff00; opacity: 0.5; }
+        .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
+        .cal-red { color: #ff0000; opacity: 0.5; }
 
-        .cal-green { color: #00ff00; opacity: 0.6; }
-        .cal-yellow { color: #ffff00; transform: scale(1.1); opacity: 1; z-index: 10;}
-        .cal-red { color: #ff0000; opacity: 0.6; }
-
+        /* ROW 2: VISUALIZER */
+        #visual-area {
+            grid-row: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         #circle {
             width: 200px;
             height: 200px;
             border-radius: 50%;
             background-color: #333;
-            transition: background-color 0.1s ease;
-            box-shadow: 0 0 60px rgba(0,0,0,0.6);
-            margin-bottom: 5px; 
-            z-index: 1;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
-        #bottom-section {
-            width: 100%;
-            background-color: #111; 
-            border-top: 2px solid #333; 
+        /* ROW 3: DATA DISPLAY */
+        #data-area {
+            grid-row: 3;
+            background: #111;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            padding-top: 10px; 
-            padding-bottom: 20px;
-            box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
-            z-index: 20;
-            flex-shrink: 0; 
+            justify-content: center;
+            border-top: 2px solid #333;
         }
+        #hz-display { font-size: 20px; color: #888; }
+        #note-display { font-size: 55px; font-weight: 900; line-height: 1; margin: 5px 0; }
+        #status { font-size: 14px; color: #555; }
 
-        #hz-display {
-            font-size: 20px; 
-            font-weight: normal;
-            color: #888; 
-            font-variant-numeric: tabular-nums;
-            margin-bottom: 0px;
-            line-height: 1;
-        }
-
-        #note-display {
-            font-size: 50px; 
-            font-weight: 900; 
-            color: white;     
-            line-height: 1.1;
-            margin: 5px 0 10px 0;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-
-        #status {
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 15px; 
-            height: 20px;
-            font-style: italic;
-        }
-
-        #controls-wrapper {
-            width: 90%;
-            max-width: 500px;
+        /* ROW 4: CONTROLS (FIXED HEIGHT) */
+        #controls-area {
+            grid-row: 4;
+            background: #111;
+            padding: 10px 20px 20px 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px; 
-            align-items: center;
+            gap: 10px;
         }
 
-        /* FIXED BUTTON LOGIC */
+        .sens-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #aaa; }
+        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 10px 0; border-radius: 8px; font-weight: bold; }
+        
+        input[type=range] { width: 100%; margin: 5px 0; }
+        
+        select { background: #222; color: white; border: 1px solid #444; padding: 8px; border-radius: 5px; }
+
+        #meter-container { height: 12px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #444; position: relative; }
+        #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
+        #db-val { position: absolute; right: 5px; top: -1px; font-size: 10px; color: #aaa; font-family: monospace; }
+
+        /* THE FIXED BUTTON */
         #start-btn {
-            width: 100%;
-            padding: 15px; 
-            font-size: 18px;
-            font-weight: bold;
+            height: 55px;
             background: #2196F3;
             color: white;
             border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: all 0.2s;
-            display: block !important; /* Ensure it never disappears */
-        }
-
-        #start-btn.stop-active {
-            background: #f44336; 
-        }
-
-        select {
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background: #222;
-            color: white;
-            font-family: monospace;
-            width: 100%;
-            text-align: center;
-            font-size: 14px;
-        }
-
-        .slider-container {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 8px; 
-        }
-
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #aaa;
-            font-size: 12px;
-            padding: 0 5px;
-        }
-
-        input[type=range] {
-            flex-grow: 1;
-            cursor: pointer;
-            height: 6px;
-            background: #444;
-            border-radius: 5px;
-            outline: none;
-            -webkit-appearance: none;
-            margin: 0 10px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #2196F3;
-            border-radius: 50%;
-        }
-
-        .button-row {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .adjust-btn {
-            flex: 1; 
-            background: #333;
-            border: 1px solid #555;
-            color: white;
-            padding: 10px 0; 
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #meter-wrapper {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        #meter-container {
-            width: 100%;
-            height: 15px; 
-            background-color: #222;
             border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-            border: 1px solid #444;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
-
-        #meter-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336);
-            transition: width 0.1s ease-out;
-        }
-
-        #value-display {
-            font-family: monospace;
-            font-size: 12px;
-            color: #888;
-            text-align: right;
-            padding-right: 5px;
-        }
-
-        #error-msg { color: #ff5555; text-align: center; font-size: 12px; min-height: 15px;}
-        .hidden { display: none !important; }
+        #start-btn.stop-active { background: #f44336; }
 
     </style>
 </head>
 <body>
 
-    <div id="top-section">
-        <div id="calibration-bar">
-            <div id="calibration-strip"></div>
-        </div>
+    <div id="top-nav">
+        <div id="calibration-strip"></div>
+    </div>
+
+    <div id="visual-area">
         <div id="circle"></div>
     </div>
 
-    <div id="bottom-section">
+    <div id="data-area">
         <div id="hz-display">-- Hz</div>
         <div id="note-display">Silence</div>
         <div id="status">Ready</div>
+    </div>
 
-        <div id="controls-wrapper">
-            <button id="start-btn">Start Listening</button>
-
-            <div class="slider-container">
-                <div class="slider-header">
-                    <span>Sensitivity</span>
-                    <input type="range" id="sensitivity" min="1" max="1000" value="50">
-                    <span id="sens-val">x50</span>
-                </div>
-                <div class="button-row">
-                    <button id="sens-dec-10" class="adjust-btn">-10</button>
-                    <button id="sens-dec-1" class="adjust-btn">-1</button>
-                    <button id="sens-inc-1" class="adjust-btn">+1</button>
-                    <button id="sens-inc-10" class="adjust-btn">+10</button>
-                </div>
-            </div>
-
-            <select id="mic-select" class="hidden"></select>
-            
-            <div id="meter-wrapper">
-                <div id="meter-container"><div id="meter-fill"></div></div>
-                <div id="value-display">-- dB</div>
-            </div>
-            <div id="error-msg"></div>
+    <div id="controls-area">
+        <div class="sens-row"><span>Sensitivity</span><span id="sens-val">x50</span></div>
+        <input type="range" id="sensitivity" min="1" max="1000" value="50">
+        <div class="btn-grid">
+            <button id="s-10" class="adj-btn">-10</button>
+            <button id="s-1" class="adj-btn">-1</button>
+            <button id="s+1" class="adj-btn">+1</button>
+            <button id="s+10" class="adj-btn">+10</button>
         </div>
+        
+        <select id="mic-select"></select>
+        
+        <div id="meter-container">
+            <div id="meter-fill"></div>
+            <div id="db-val">-- dB</div>
+        </div>
+
+        <button id="start-btn">Start Listening</button>
     </div>
 
     <script>
-        // --- PWA ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js');
-            });
-        }
-
-        // --- CALIBRATION ---
-        let breakFreq = 261.63; 
+        // CALIBRATION LOGIC (Locked Index)
+        let breakFreq = 261.63;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const strip = document.getElementById('calibration-strip');
-        const NOTE_WIDTH = 70; 
-        const MIDI_START = 40; 
-        const MIDI_END = 72;   
-        let notesElements = [];
-        let currentTranslate = 0;
-        let isDragging = false;
-        let startX = 0;
-        let startTranslate = 0;
+        const NOTE_WIDTH = 70;
+        let notesEls = [], currentT = 0, isDrag = false, startX = 0, startT = 0;
 
-        function initSlider() {
-            for (let m = MIDI_START; m <= MIDI_END; m++) {
+        function initCal() {
+            for (let m = 40; m <= 72; m++) {
                 const el = document.createElement('div');
                 el.className = 'cal-note';
-                el.textContent = getNoteFromMidi(m);
-                el.dataset.freq = 440 * Math.pow(2, (m - 69) / 12);
+                el.textContent = notes[m % 12] + (Math.floor(m / 12) - 1);
+                el.dataset.f = 440 * Math.pow(2, (m - 69) / 12);
                 strip.appendChild(el);
-                notesElements.push(el);
+                notesEls.push(el);
             }
-            currentTranslate = - ((60 - MIDI_START) * NOTE_WIDTH) - (NOTE_WIDTH / 2);
-            setTranslate(currentTranslate);
-            updateCalibration();
-
-            const bar = document.getElementById('calibration-bar');
-            bar.addEventListener('mousedown', dragStart);
-            window.addEventListener('mouseup', dragEnd);
-            window.addEventListener('mousemove', drag);
-            bar.addEventListener('touchstart', dragStart, {passive: false});
-            window.addEventListener('touchend', dragEnd);
-            window.addEventListener('touchmove', drag, {passive: false});
-        }
-
-        function getNoteFromMidi(midi) {
-            return notes[midi % 12] + (Math.floor(midi / 12) - 1);
-        }
-
-        function setTranslate(val) {
-            const max = - (NOTE_WIDTH / 2); 
-            const min = - ((notesElements.length - 1) * NOTE_WIDTH) - (NOTE_WIDTH / 2); 
-            if (val > max) val = max; if (val < min) val = min;
-            strip.style.transform = `translateX(${val}px)`;
-            currentTranslate = val;
-        }
-
-        function dragStart(e) { 
-            isDragging = true; 
-            startX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
-            startTranslate = currentTranslate;
-            strip.style.transition = 'none';
-        }
-
-        function drag(e) {
-            if (!isDragging) return;
-            const x = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX;
-            setTranslate(startTranslate + (x - startX));
-            updateCalibration();
-        }
-
-        function dragEnd() {
-            isDragging = false;
-            strip.style.transition = 'transform 0.2s ease-out';
-            let snapIndex = Math.round((-currentTranslate - (NOTE_WIDTH/2)) / NOTE_WIDTH);
-            setTranslate(- (snapIndex * NOTE_WIDTH) - (NOTE_WIDTH / 2));
-            updateCalibration();
-        }
-
-        function updateCalibration() {
-            let centerIndex = Math.round((-currentTranslate - (NOTE_WIDTH/2)) / NOTE_WIDTH);
-            notesElements.forEach((el, i) => {
-                el.className = 'cal-note' + (i < centerIndex ? ' cal-green' : i > centerIndex ? ' cal-red' : ' cal-yellow');
-                if (i === centerIndex) breakFreq = parseFloat(el.dataset.freq);
-            });
-        }
-        initSlider();
-
-        // --- AUDIO ---
-        let audioContext, bassAnalyser, volAnalyser, microphone, isRunning = false, currentStream = null;
-        let bassDataArray, volDataArray;
-
-        const startBtn = document.getElementById('start-btn');
-        const micSelect = document.getElementById('mic-select');
-        const statusDisplay = document.getElementById('status');
-        const meterFill = document.getElementById('meter-fill');
-        const valueDisplay = document.getElementById('value-display');
-        const hzDisplay = document.getElementById('hz-display');
-        const noteDisplay = document.getElementById('note-display');
-        const circle = document.getElementById('circle');
-        const sensitivitySlider = document.getElementById('sensitivity');
-
-        startBtn.addEventListener('click', async () => {
-            if (!isRunning) {
-                await startAudio();
-            } else {
-                stopAudio();
-            }
-        });
-
-        async function startAudio(deviceId = null) {
-            try {
-                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') await audioContext.resume();
-
-                const constraints = { audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-                microphone = audioContext.createMediaStreamSource(currentStream);
-                bassAnalyser = audioContext.createAnalyser();
-                bassAnalyser.fftSize = 32768;
-                volAnalyser = audioContext.createAnalyser();
-                volAnalyser.fftSize = 2048;
-
-                microphone.connect(bassAnalyser);
-                microphone.connect(volAnalyser);
-                
-                bassDataArray = new Float32Array(bassAnalyser.frequencyBinCount);
-                volDataArray = new Float32Array(volAnalyser.fftSize);
-
-                const gainNode = audioContext.createGain();
-                gainNode.gain.value = 0;
-                microphone.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                if (micSelect.options.length === 0) await populateDeviceList();
-                
-                micSelect.classList.remove('hidden');
-                startBtn.textContent = "Stop Listening";
-                startBtn.classList.add('stop-active');
-                statusDisplay.textContent = "Listening...";
-                isRunning = true;
-                animationLoop();
-            } catch (err) {
-                document.getElementById('error-msg').textContent = "Error: " + err.message;
-            }
-        }
-
-        function stopAudio() {
-            isRunning = false;
-            if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-            startBtn.textContent = "Start Listening";
-            startBtn.classList.remove('stop-active');
-            statusDisplay.textContent = "Stopped";
-            hzDisplay.textContent = "-- Hz";
-            noteDisplay.textContent = "Silence";
-            circle.style.backgroundColor = "#333";
-            meterFill.style.width = "0%";
-        }
-
-        async function populateDeviceList() {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            micSelect.innerHTML = '';
-            devices.filter(d => d.kind === 'audioinput').forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d.deviceId;
-                opt.text = d.label || 'Mic';
-                micSelect.appendChild(opt);
-            });
-        }
-
-        function animationLoop() {
-            if (!isRunning) return;
-            // Vol
-            volAnalyser.getFloatTimeDomainData(volDataArray);
-            let sum = 0; for (const a of volDataArray) sum += a * a;
-            let rms = Math.sqrt(sum / volDataArray.length);
-            let db = 20 * Math.log10(rms);
-            meterFill.style.width = Math.min(Math.sqrt(rms * sensitivitySlider.value), 1) * 100 + "%";
-            valueDisplay.innerHTML = Math.round(isFinite(db) ? db : -100) + " dB";
-
-            // Pitch
-            bassAnalyser.getFloatFrequencyData(bassDataArray);
-            const res = audioContext.sampleRate / bassAnalyser.fftSize;
-            let maxHPS = -Infinity, peak = -1;
-            for (let i = Math.floor(60/res); i < Math.floor(400/res); i++) {
-                let hps = bassDataArray[i] + 0.8 * (bassDataArray[i*2] || -100) + 0.6 * (bassDataArray[i*3] || -100);
-                if (hps > maxHPS) { maxHPS = hps; peak = i; }
-            }
+            updateT(-((60-40)*NOTE_WIDTH) - 35);
             
-            if (Math.max(...bassDataArray) > -90) {
-                let freq = peak * res;
-                hzDisplay.textContent = Math.round(freq) + " Hz";
-                let noteNum = 12 * (Math.log(freq / 440) / Math.log(2)) + 69;
-                noteDisplay.textContent = notes[Math.round(noteNum) % 12] + (Math.floor(Math.round(noteNum) / 12) - 1);
-                
-                let diff = 12 * Math.log2(freq / breakFreq);
-                circle.style.backgroundColor = diff < -0.5 ? "#00ff00" : diff > 0.5 ? "#ff0000" : "#ffff00";
-            }
-            requestAnimationFrame(animationLoop);
+            const move = (e) => { if(!isDrag) return; let x = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; updateT(startT + (x - startX)); };
+            const end = () => { isDrag = false; let snap = Math.round((-currentT - 35)/NOTE_WIDTH); updateT(-(snap*NOTE_WIDTH)-35); };
+            document.getElementById('top-nav').onmousedown = document.getElementById('top-nav').ontouchstart = (e) => { 
+                isDrag = true; startX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; startT = currentT; 
+            };
+            window.onmousemove = window.ontouchmove = move; window.onmouseup = window.ontouchend = end;
         }
 
-        // Sens Adjustments
-        document.getElementById('sens-dec-10').onclick = () => { sensitivitySlider.value -= 10; updateSensDisplay(); };
-        document.getElementById('sens-dec-1').onclick = () => { sensitivitySlider.value -= 1; updateSensDisplay(); };
-        document.getElementById('sens-inc-1').onclick = () => { sensitivitySlider.value = parseInt(sensitivitySlider.value) + 1; updateSensDisplay(); };
-        document.getElementById('sens-inc-10').onclick = () => { sensitivitySlider.value = parseInt(sensitivitySlider.value) + 10; updateSensDisplay(); };
-        function updateSensDisplay() { document.getElementById('sens-val').textContent = 'x' + sensitivitySlider.value; }
-        sensitivitySlider.oninput = updateSensDisplay;
+        function updateT(v) {
+            const max = -35, min = -((notesEls.length-1)*NOTE_WIDTH)-35;
+            currentT = Math.max(min, Math.min(max, v));
+            strip.style.transform = `translateX(${currentT}px)`;
+            let idx = Math.round((-currentT - 35)/NOTE_WIDTH);
+            notesEls.forEach((el, i) => {
+                el.className = 'cal-note ' + (i < idx ? 'cal-green' : i > idx ? 'cal-red' : 'cal-yellow');
+                if(i === idx) breakFreq = parseFloat(el.dataset.f);
+            });
+        }
+        initCal();
+
+        // AUDIO LOGIC
+        let ctx, bAnl, vAnl, mic, stream, running = false, vData, bData;
+        const sBtn = document.getElementById('start-btn'), mSel = document.getElementById('mic-select'), hDisp = document.getElementById('hz-display'), nDisp = document.getElementById('note-display'), mFill = document.getElementById('meter-fill'), circ = document.getElementById('circle'), sens = document.getElementById('sensitivity');
+
+        sBtn.onclick = async () => {
+            if(!running) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+                mic = ctx.createMediaStreamSource(stream);
+                bAnl = ctx.createAnalyser(); bAnl.fftSize = 32768;
+                vAnl = ctx.createAnalyser(); vAnl.fftSize = 2048;
+                mic.connect(bAnl); mic.connect(vAnl);
+                bData = new Float32Array(bAnl.frequencyBinCount);
+                vData = new Float32Array(vAnl.fftSize);
+                
+                const devs = await navigator.mediaDevices.enumerateDevices();
+                mSel.innerHTML = '';
+                devs.filter(d => d.kind === 'audioinput').forEach(d => {
+                    const o = document.createElement('option'); o.value = d.deviceId; o.text = d.label || 'Mic'; mSel.appendChild(o);
+                });
+
+                sBtn.textContent = "Stop Listening"; sBtn.classList.add('stop-active');
+                running = true; loop();
+            } else {
+                running = false; stream.getTracks().forEach(t => t.stop());
+                sBtn.textContent = "Start Listening"; sBtn.classList.remove('stop-active');
+                hDisp.textContent = "-- Hz"; nDisp.textContent = "Silence"; circ.style.backgroundColor = "#333"; mFill.style.width = "0%";
+            }
+        };
+
+        function loop() {
+            if(!running) return;
+            vAnl.getFloatTimeDomainData(vData);
+            let s = 0; for(let a of vData) s += a*a;
+            let rms = Math.sqrt(s/vData.length);
+            mFill.style.width = Math.min(Math.sqrt(rms * sens.value), 1) * 100 + "%";
+            document.getElementById('db-val').textContent = Math.round(20*Math.log10(rms)) + " dB";
+
+            bAnl.getFloatFrequencyData(bData);
+            const res = ctx.sampleRate / bAnl.fftSize;
+            let mH = -1000, p = -1;
+            for(let i = Math.floor(60/res); i < Math.floor(400/res); i++) {
+                let h = bData[i] + 0.8*(bData[i*2]||-100) + 0.6*(bData[i*3]||-100);
+                if(h > mH) { mH = h; p = i; }
+            }
+            if(Math.max(...bData) > -90) {
+                let f = p * res;
+                hDisp.textContent = Math.round(f) + " Hz";
+                let n = 12 * (Math.log(f/440)/Math.log(2)) + 69;
+                nDisp.textContent = notes[Math.round(n)%12] + (Math.floor(Math.round(n)/12)-1);
+                let d = 12 * Math.log2(f/breakFreq);
+                circ.style.backgroundColor = d < -0.5 ? "#00ff00" : d > 0.5 ? "#ff0000" : "#ffff00";
+            }
+            requestAnimationFrame(loop);
+        }
+
+        const upS = () => document.getElementById('sens-val').textContent = 'x' + sens.value;
+        document.getElementById('s-10').onclick = () => { sens.value -= 10; upS(); };
+        document.getElementById('s-1').onclick = () => { sens.value -= 1; upS(); };
+        document.getElementById('s+1').onclick = () => { sens.value = parseInt(sens.value)+1; upS(); };
+        document.getElementById('s+10').onclick = () => { sens.value = parseInt(sens.value)+10; upS(); };
+        sens.oninput = upS;
 
     </script>
 </body>
