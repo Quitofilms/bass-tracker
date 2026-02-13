@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v2.0</title>
+    <title>Bass Tracker v2.1</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -19,18 +19,17 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: hidden; /* Prevent body scroll, we use internal scroll */
             user-select: none;
         }
 
-        /* NEW: Force Reload Button */
         #refresh-btn {
             position: absolute;
             top: 5px;
             left: 5px;
             z-index: 100;
             background: rgba(255, 255, 255, 0.1);
-            color: #555;
+            color: #777;
             border: 1px solid #333;
             border-radius: 4px;
             font-size: 10px;
@@ -38,8 +37,10 @@
             cursor: pointer;
         }
 
+        /* FIXED TOP */
         #calibration-container {
             height: 80px;
+            flex-shrink: 0;
             position: relative;
             overflow: hidden;
             mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
@@ -58,32 +59,44 @@
         .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
         .cal-red { color: #ff0000; opacity: 0.5; }
 
-        #main-vertical-stack {
+        /* SCROLLABLE MIDDLE (The Blue Square Area) */
+        #scroll-content {
+            flex-grow: 1;
+            overflow-y: auto; /* Adds the vertical scroll bar if needed */
             display: flex;
             flex-direction: column;
             align-items: center;
-            background: #111;
             padding: 10px 0;
+            background: #111;
             border-top: 1px solid #333;
+            scrollbar-width: thin; /* Thin scrollbar for modern browsers */
+            scrollbar-color: #333 #111;
         }
 
+        /* Webkit scrollbar styling */
+        #scroll-content::-webkit-scrollbar { width: 6px; }
+        #scroll-content::-webkit-scrollbar-track { background: #111; }
+        #scroll-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
         #circle {
-            width: 220px;
-            height: 220px;
+            width: 200px;
+            height: 200px;
             border-radius: 50%;
             background-color: #333;
             margin-bottom: 10px;
+            flex-shrink: 0;
         }
 
         #hz-display { font-size: 20px; color: #888; }
         #note-display { font-size: 60px; font-weight: 900; line-height: 1; margin: 5px 0; }
-        #status { font-size: 14px; color: #555; margin-bottom: 10px; }
+        #status { font-size: 14px; color: #555; margin-bottom: 15px; }
 
         #controls-group {
             width: 90%;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+            padding-bottom: 20px; /* Space so meter isn't on the edge */
         }
 
         .sens-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; }
@@ -96,12 +109,15 @@
         #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
         #db-text { position: absolute; right: 10px; top: 1px; font-size: 10px; color: #fff; font-family: monospace; }
 
+        /* FIXED ACTION BUTTON (Bottom) */
         #action-container {
-            flex-grow: 1;
+            height: 80px;
+            flex-shrink: 0;
             display: flex;
-            align-items: flex-end;
-            padding: 0 20px 20px 20px;
+            align-items: center;
+            padding: 0 20px;
             background: #111;
+            border-top: 1px solid #222;
         }
 
         #start-btn {
@@ -126,7 +142,7 @@
         <div id="calibration-strip"></div>
     </div>
 
-    <div id="main-vertical-stack">
+    <div id="scroll-content">
         <div id="circle"></div>
         <div id="hz-display">-- Hz</div>
         <div id="note-display">Silence</div>
@@ -158,17 +174,14 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { 
                 navigator.serviceWorker.register('./sw.js').then(reg => {
-                    // Force update if button is clicked
                     document.getElementById('refresh-btn').onclick = () => {
-                        reg.update().then(() => {
-                            window.location.reload();
-                        });
+                        reg.update().then(() => { window.location.reload(); });
                     };
                 });
             });
         }
 
-        // CALIBRATION (E2-C5)
+        // CALIBRATION
         let breakFreq = 261.63;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const strip = document.getElementById('calibration-strip');
