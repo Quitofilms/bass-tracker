@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v2.3</title>
+    <title>Bass Tracker v2.4</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -23,7 +23,6 @@
             user-select: none;
         }
 
-        /* HORIZONTAL HEADER LAYER */
         #header-row {
             display: flex;
             justify-content: space-between;
@@ -51,7 +50,6 @@
             font-family: monospace;
         }
 
-        /* FIXED CALIBRATION LAYER */
         #calibration-container {
             height: 80px;
             flex-shrink: 0;
@@ -73,7 +71,6 @@
         .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
         .cal-red { color: #ff0000; opacity: 0.5; }
 
-        /* SCROLLABLE MAIN STACK */
         #scroll-content {
             flex-grow: 1;
             overflow-y: auto;
@@ -90,9 +87,10 @@
         #scroll-content::-webkit-scrollbar-track { background: #111; }
         #scroll-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
+        /* REDUCED DIAMETER BY HALF (220px -> 110px) */
         #circle {
-            width: 220px;
-            height: 220px;
+            width: 110px;
+            height: 110px;
             border-radius: 50%;
             background-color: #333;
             margin-top: 15px;
@@ -143,7 +141,7 @@
 
     <div id="header-row">
         <button id="refresh-btn">Sync Version</button>
-        <div id="version-tag">v2.3</div>
+        <div id="version-tag">v2.4</div>
     </div>
 
     <div id="calibration-container">
