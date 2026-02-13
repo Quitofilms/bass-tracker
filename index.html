@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v1.8</title>
+    <title>Bass Tracker v1.9</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
 
     <style>
+        /* The Root Container acts like an Android vertical LinearLayout */
         body {
             background-color: #000;
             color: white;
@@ -17,20 +18,17 @@
             margin: 0;
             padding: 0;
             height: 100vh;
-            width: 100vw;
-            display: grid;
-            /* Fixed Grid: Calibration(100px), Circle(Fr), Data(140px), Controls(220px) */
-            grid-template-rows: 100px 1fr 140px 240px;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
             user-select: none;
         }
 
-        /* ROW 1: CALIBRATION */
-        #top-nav {
-            grid-row: 1;
+        /* TOP: Calibration (Keep at top) */
+        #calibration-container {
+            height: 80px;
             position: relative;
             overflow: hidden;
-            background: #000;
             mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
         }
@@ -42,78 +40,69 @@
             left: 50%;
             will-change: transform;
         }
-        .cal-note {
-            font-size: 50px;
-            font-weight: 900;
-            width: 70px;
-            text-align: center;
-            flex-shrink: 0;
-        }
+        .cal-note { font-size: 50px; font-weight: 900; width: 70px; text-align: center; flex-shrink: 0; }
         .cal-green { color: #00ff00; opacity: 0.5; }
         .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
         .cal-red { color: #ff0000; opacity: 0.5; }
 
-        /* ROW 2: VISUALIZER */
-        #visual-area {
-            grid-row: 2;
+        /* THE BLUE SQUARE GROUP (Shifted Up) */
+        #main-vertical-stack {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            background: #111;
+            padding: 10px 0;
+            border-top: 1px solid #333;
         }
+
         #circle {
-            width: 200px;
-            height: 200px;
+            width: 220px;
+            height: 220px;
             border-radius: 50%;
             background-color: #333;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            margin-bottom: 10px;
         }
 
-        /* ROW 3: DATA DISPLAY */
-        #data-area {
-            grid-row: 3;
-            background: #111;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-top: 2px solid #333;
-        }
         #hz-display { font-size: 20px; color: #888; }
-        #note-display { font-size: 55px; font-weight: 900; line-height: 1; margin: 5px 0; }
-        #status { font-size: 14px; color: #555; }
+        #note-display { font-size: 60px; font-weight: 900; line-height: 1; margin: 5px 0; }
+        #status { font-size: 14px; color: #555; margin-bottom: 10px; }
 
-        /* ROW 4: CONTROLS (FIXED HEIGHT) */
-        #controls-area {
-            grid-row: 4;
-            background: #111;
-            padding: 10px 20px 20px 20px;
+        /* Controls inside the stack */
+        #controls-group {
+            width: 90%;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
 
-        .sens-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #aaa; }
-        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 10px 0; border-radius: 8px; font-weight: bold; }
+        .sens-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; }
+        .adj-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 12px 0; border-radius: 8px; font-weight: bold; }
         
-        input[type=range] { width: 100%; margin: 5px 0; }
-        
-        select { background: #222; color: white; border: 1px solid #444; padding: 8px; border-radius: 5px; }
+        select { background: #222; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; width: 100%; }
 
-        #meter-container { height: 12px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #444; position: relative; }
+        #meter-container { height: 16px; background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #444; position: relative; }
         #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
-        #db-val { position: absolute; right: 5px; top: -1px; font-size: 10px; color: #aaa; font-family: monospace; }
+        #db-text { position: absolute; right: 10px; top: 1px; font-size: 10px; color: #fff; font-family: monospace; }
 
-        /* THE FIXED BUTTON */
+        /* THE YELLOW STOP BUTTON (At bottom of screen) */
+        #action-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: flex-end;
+            padding: 0 20px 20px 20px;
+            background: #111;
+        }
+
         #start-btn {
-            height: 55px;
+            width: 100%;
+            height: 60px;
             background: #2196F3;
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 18px;
+            border-radius: 12px;
+            font-size: 20px;
             font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
         #start-btn.stop-active { background: #f44336; }
 
@@ -121,42 +110,43 @@
 </head>
 <body>
 
-    <div id="top-nav">
+    <div id="calibration-container">
         <div id="calibration-strip"></div>
     </div>
 
-    <div id="visual-area">
+    <div id="main-vertical-stack">
         <div id="circle"></div>
-    </div>
-
-    <div id="data-area">
+        
         <div id="hz-display">-- Hz</div>
         <div id="note-display">Silence</div>
         <div id="status">Ready</div>
+
+        <div id="controls-group">
+            <div class="sens-header"><span>Sensitivity</span><span id="sens-val">x50</span></div>
+            <input type="range" id="sensitivity" min="1" max="1000" value="50" style="width:100%">
+            
+            <div class="adj-row">
+                <button id="s-10" class="adj-btn">-10</button>
+                <button id="s-1" class="adj-btn">-1</button>
+                <button id="s+1" class="adj-btn">+1</button>
+                <button id="s+10" class="adj-btn">+10</button>
+            </div>
+            
+            <select id="mic-select"></select>
+            
+            <div id="meter-container">
+                <div id="meter-fill"></div>
+                <div id="db-text">-- dB</div>
+            </div>
+        </div>
     </div>
 
-    <div id="controls-area">
-        <div class="sens-row"><span>Sensitivity</span><span id="sens-val">x50</span></div>
-        <input type="range" id="sensitivity" min="1" max="1000" value="50">
-        <div class="btn-grid">
-            <button id="s-10" class="adj-btn">-10</button>
-            <button id="s-1" class="adj-btn">-1</button>
-            <button id="s+1" class="adj-btn">+1</button>
-            <button id="s+10" class="adj-btn">+10</button>
-        </div>
-        
-        <select id="mic-select"></select>
-        
-        <div id="meter-container">
-            <div id="meter-fill"></div>
-            <div id="db-val">-- dB</div>
-        </div>
-
+    <div id="action-container">
         <button id="start-btn">Start Listening</button>
     </div>
 
     <script>
-        // CALIBRATION LOGIC (Locked Index)
+        // CALIBRATION (E2-C5)
         let breakFreq = 261.63;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const strip = document.getElementById('calibration-strip');
@@ -176,7 +166,7 @@
             
             const move = (e) => { if(!isDrag) return; let x = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; updateT(startT + (x - startX)); };
             const end = () => { isDrag = false; let snap = Math.round((-currentT - 35)/NOTE_WIDTH); updateT(-(snap*NOTE_WIDTH)-35); };
-            document.getElementById('top-nav').onmousedown = document.getElementById('top-nav').ontouchstart = (e) => { 
+            document.getElementById('calibration-container').onmousedown = document.getElementById('calibration-container').ontouchstart = (e) => { 
                 isDrag = true; startX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; startT = currentT; 
             };
             window.onmousemove = window.ontouchmove = move; window.onmouseup = window.ontouchend = end;
@@ -194,7 +184,7 @@
         }
         initCal();
 
-        // AUDIO LOGIC
+        // AUDIO
         let ctx, bAnl, vAnl, mic, stream, running = false, vData, bData;
         const sBtn = document.getElementById('start-btn'), mSel = document.getElementById('mic-select'), hDisp = document.getElementById('hz-display'), nDisp = document.getElementById('note-display'), mFill = document.getElementById('meter-fill'), circ = document.getElementById('circle'), sens = document.getElementById('sensitivity');
 
@@ -230,7 +220,7 @@
             let s = 0; for(let a of vData) s += a*a;
             let rms = Math.sqrt(s/vData.length);
             mFill.style.width = Math.min(Math.sqrt(rms * sens.value), 1) * 100 + "%";
-            document.getElementById('db-val').textContent = Math.round(20*Math.log10(rms)) + " dB";
+            document.getElementById('db-text').textContent = Math.round(20*Math.log10(rms)) + " dB";
 
             bAnl.getFloatFrequencyData(bData);
             const res = ctx.sampleRate / bAnl.fftSize;
