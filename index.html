@@ -1,17 +1,28 @@
-/* Reduce circle size to 110px */
-.circle {
-    width: 110px;
-    height: 110px;
-}
-
-/* Reduce note-display font size to 30px */
-.note-display {
-    font-size: 30px;
-}
-
-/* Adjust margins */
-.container {
-    margin-top: 10px;
-    margin-bottom: 10px;
-    padding: 10px;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bass Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f0f0f0; }
+        .top-bar button { margin-left: 10px; }
+        .circle { width: 110px; height: 110px; border-radius: 50%; background: lightblue; margin: 20px auto; }
+        .note-display { font-size: 30px; text-align: center; }
+        .calibration-notes { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <button>Sync Version</button>
+        <div>v2.2</div>
+    </div>
+    <div class="circle"></div>
+    <div class="note-display">Display Notes Here</div>
+    <div class="calibration-notes">
+        <h2>Calibration Notes</h2>
+        <p>Details about calibration...</p>
+    </div>
+</body>
+</html>
