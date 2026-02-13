@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v1.9</title>
+    <title>Bass Tracker v2.0</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
 
     <style>
-        /* The Root Container acts like an Android vertical LinearLayout */
         body {
             background-color: #000;
             color: white;
@@ -24,7 +23,21 @@
             user-select: none;
         }
 
-        /* TOP: Calibration (Keep at top) */
+        /* NEW: Force Reload Button */
+        #refresh-btn {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.1);
+            color: #555;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 10px;
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+
         #calibration-container {
             height: 80px;
             position: relative;
@@ -45,7 +58,6 @@
         .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
         .cal-red { color: #ff0000; opacity: 0.5; }
 
-        /* THE BLUE SQUARE GROUP (Shifted Up) */
         #main-vertical-stack {
             display: flex;
             flex-direction: column;
@@ -67,7 +79,6 @@
         #note-display { font-size: 60px; font-weight: 900; line-height: 1; margin: 5px 0; }
         #status { font-size: 14px; color: #555; margin-bottom: 10px; }
 
-        /* Controls inside the stack */
         #controls-group {
             width: 90%;
             display: flex;
@@ -79,13 +90,12 @@
         .adj-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 12px 0; border-radius: 8px; font-weight: bold; }
         
-        select { background: #222; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; width: 100%; }
+        select { background: #222; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; width: 100%; font-size: 14px;}
 
         #meter-container { height: 16px; background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #444; position: relative; }
         #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
         #db-text { position: absolute; right: 10px; top: 1px; font-size: 10px; color: #fff; font-family: monospace; }
 
-        /* THE YELLOW STOP BUTTON (At bottom of screen) */
         #action-container {
             flex-grow: 1;
             display: flex;
@@ -110,13 +120,14 @@
 </head>
 <body>
 
+    <button id="refresh-btn">Sync Version</button>
+
     <div id="calibration-container">
         <div id="calibration-strip"></div>
     </div>
 
     <div id="main-vertical-stack">
         <div id="circle"></div>
-        
         <div id="hz-display">-- Hz</div>
         <div id="note-display">Silence</div>
         <div id="status">Ready</div>
@@ -124,16 +135,13 @@
         <div id="controls-group">
             <div class="sens-header"><span>Sensitivity</span><span id="sens-val">x50</span></div>
             <input type="range" id="sensitivity" min="1" max="1000" value="50" style="width:100%">
-            
             <div class="adj-row">
                 <button id="s-10" class="adj-btn">-10</button>
                 <button id="s-1" class="adj-btn">-1</button>
                 <button id="s+1" class="adj-btn">+1</button>
                 <button id="s+10" class="adj-btn">+10</button>
             </div>
-            
             <select id="mic-select"></select>
-            
             <div id="meter-container">
                 <div id="meter-fill"></div>
                 <div id="db-text">-- dB</div>
@@ -146,6 +154,20 @@
     </div>
 
     <script>
+        // PWA REGISTRATION
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => { 
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    // Force update if button is clicked
+                    document.getElementById('refresh-btn').onclick = () => {
+                        reg.update().then(() => {
+                            window.location.reload();
+                        });
+                    };
+                });
+            });
+        }
+
         // CALIBRATION (E2-C5)
         let breakFreq = 261.63;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -191,6 +213,7 @@
         sBtn.onclick = async () => {
             if(!running) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') await ctx.resume();
                 stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
                 mic = ctx.createMediaStreamSource(stream);
                 bAnl = ctx.createAnalyser(); bAnl.fftSize = 32768;
@@ -208,7 +231,7 @@
                 sBtn.textContent = "Stop Listening"; sBtn.classList.add('stop-active');
                 running = true; loop();
             } else {
-                running = false; stream.getTracks().forEach(t => t.stop());
+                running = false; if(stream) stream.getTracks().forEach(t => t.stop());
                 sBtn.textContent = "Start Listening"; sBtn.classList.remove('stop-active');
                 hDisp.textContent = "-- Hz"; nDisp.textContent = "Silence"; circ.style.backgroundColor = "#333"; mFill.style.width = "0%";
             }
