@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <title>Bass Tracker v2.2</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        body {
+            background-color: #000;
+            color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; 
+            user-select: none;
+        }
+
+        #refresh-btn {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.1);
+            color: #777;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 10px;
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+
+        /* FIXED TOP CALIBRATION */
+        #calibration-container {
+            height: 80px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+        }
+        #calibration-strip {
+            display: flex;
+            align-items: center;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            will-change: transform;
+        }
+        .cal-note { font-size: 50px; font-weight: 900; width: 70px; text-align: center; flex-shrink: 0; }
+        .cal-green { color: #00ff00; opacity: 0.5; }
+        .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
+        .cal-red { color: #ff0000; opacity: 0.5; }
+
+        /* SCROLLABLE CONTAINER (Now includes the button) */
+        #scroll-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #111;
+            border-top: 1px solid #333;
+            scrollbar-width: thin;
+            scrollbar-color: #333 #111;
+        }
+
+        #scroll-content::-webkit-scrollbar { width: 6px; }
+        #scroll-content::-webkit-scrollbar-track { background: #111; }
+        #scroll-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        #circle {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background-color: #333;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        #hz-display { font-size: 20px; color: #888; }
+        #note-display { font-size: 60px; font-weight: 900; line-height: 1; margin: 5px 0; }
+        #status { font-size: 14px; color: #555; margin-bottom: 15px; }
+
+        #controls-group {
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-bottom: 30px; /* Space for thumb comfort at the bottom of scroll */
+        }
+
+        .sens-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; }
+        .adj-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 12px 0; border-radius: 8px; font-weight: bold; }
+        
+        select { background: #222; color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; width: 100%; font-size: 14px;}
+
+        #meter-container { height: 18px; background: #222; border-radius: 9px; overflow: hidden; border: 1px solid #444; position: relative; }
+        #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
+        #db-text { position: absolute; right: 10px; top: 1px; font-size: 10px; color: #fff; font-family: monospace; }
+
+        /* THE START/STOP BUTTON (Inside the Scroll Group) */
+        #start-btn {
+            width: 100%;
+            height: 64px;
+            margin-top: 10px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        #start-btn.stop-active { background: #f44336; }
+
+    </style>
+</head>
+<body>
+
+    <button id="refresh-btn">Sync Version</button>
+
+    <div id="calibration-container">
+        <div id="calibration-strip"></div>
+    </div>
+
+    <div id="scroll-content">
+        <div id="circle"></div>
+        <div id="hz-display">-- Hz</div>
+        <div id="note-display">Silence</div>
+        <div id="status">Ready</div>
+
+        <div id="controls-group">
+            <div class="sens-header"><span>Sensitivity</span><span id="sens-val">x50</span></div>
+            <input type="range" id="sensitivity" min="1" max="1000" value="50" style="width:100%">
+            <div class="adj-row">
+                <button id="s-10" class="adj-btn">-10</button>
+                <button id="s-1" class="adj-btn">-1</button>
+                <button id="s+1" class="adj-btn">+1</button>
+                <button id="s+10" class="adj-btn">+10</button>
+            </div>
+            <select id="mic-select"></select>
+            <div id="meter-container">
+                <div id="meter-fill"></div>
+                <div id="db-text">-- dB</div>
+            </div>
+
+            <button id="start-btn">Start Listening</button>
+        </div>
+    </div>
+
+    <script>
+        // PWA REGISTRATION
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => { 
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    document.getElementById('refresh-btn').onclick = () => {
+                        reg.update().then(() => { window.location.reload(); });
+                    };
+                });
+            });
+        }
+
+        // CALIBRATION (E2-C5)
+        let breakFreq = 261.63;
+        const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const strip = document.getElementById('calibration-strip');
+        const NOTE_WIDTH = 70;
+        let notesEls = [], currentT = 0, isDrag = false, startX = 0, startT = 0;
+
+        function initCal() {
+            for (let m = 40; m <= 72; m++) {
+                const el = document.createElement('div');
+                el.className = 'cal-note';
+                el.textContent = notes[m % 12] + (Math.floor(m / 12) - 1);
+                el.dataset.f = 440 * Math.pow(2, (m - 69) / 12);
+                strip.appendChild(el);
+                notesEls.push(el);
+            }
+            updateT(-((60-40)*NOTE_WIDTH) - 35);
+            
+            const move = (e) => { if(!isDrag) return; let x = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; updateT(startT + (x - startX)); };
+            const end = () => { isDrag = false; let snap = Math.round((-currentT - 35)/NOTE_WIDTH); updateT(-(snap*NOTE_WIDTH)-35); };
+            document.getElementById('calibration-container').onmousedown = document.getElementById('calibration-container').ontouchstart = (e) => { 
+                isDrag = true; startX = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; startT = currentT; 
+            };
+            window.onmousemove = window.ontouchmove = move; window.onmouseup = window.ontouchend = end;
+        }
+
+        function updateT(v) {
+            const max = -35, min = -((notesEls.length-1)*NOTE_WIDTH)-35;
+            currentT = Math.max(min, Math.min(max, v));
+            strip.style.transform = `translateX(${currentT}px)`;
+            let idx = Math.round((-currentT - 35)/NOTE_WIDTH);
+            notesEls.forEach((el, i) => {
+                el.className = 'cal-note ' + (i < idx ? 'cal-green' : i > idx ? 'cal-red' : 'cal-yellow');
+                if(i === idx) breakFreq = parseFloat(el.dataset.f);
+            });
+        }
+        initCal();
+
+        // AUDIO
+        let ctx, bAnl, vAnl, mic, stream, running = false, vData, bData;
+        const sBtn = document.getElementById('start-btn'), mSel = document.getElementById('mic-select'), hDisp = document.getElementById('hz-display'), nDisp = document.getElementById('note-display'), mFill = document.getElementById('meter-fill'), circ = document.getElementById('circle'), sens = document.getElementById('sensitivity');
+
+        sBtn.onclick = async () => {
+            if(!running) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') await ctx.resume();
+                stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+                mic = ctx.createMediaStreamSource(stream);
+                bAnl = ctx.createAnalyser(); bAnl.fftSize = 32768;
+                vAnl = ctx.createAnalyser(); vAnl.fftSize = 2048;
+                mic.connect(bAnl); mic.connect(vAnl);
+                bData = new Float32Array(bAnl.frequencyBinCount);
+                vData = new Float32Array(vAnl.fftSize);
+                
+                const devs = await navigator.mediaDevices.enumerateDevices();
+                mSel.innerHTML = '';
+                devs.filter(d => d.kind === 'audioinput').forEach(d => {
+                    const o = document.createElement('option'); o.value = d.deviceId; o.text = d.label || 'Mic'; mSel.appendChild(o);
+                });
+
+                sBtn.textContent = "Stop Listening"; sBtn.classList.add('stop-active');
+                running = true; loop();
+            } else {
+                running = false; if(stream) stream.getTracks().forEach(t => t.stop());
+                sBtn.textContent = "Start Listening"; sBtn.classList.remove('stop-active');
+                hDisp.textContent = "-- Hz"; nDisp.textContent = "Silence"; circ.style.backgroundColor = "#333"; mFill.style.width = "0%";
+            }
+        };
+
+        function loop() {
+            if(!running) return;
+            vAnl.getFloatTimeDomainData(vData);
+            let s = 0; for(let a of vData) s += a*a;
+            let rms = Math.sqrt(s/vData.length);
+            mFill.style.width = Math.min(Math.sqrt(rms * sens.value), 1) * 100 + "%";
+            document.getElementById('db-text').textContent = Math.round(20*Math.log10(rms)) + " dB";
+
+            bAnl.getFloatFrequencyData(bData);
+            const res = ctx.sampleRate / bAnl.fftSize;
+            let mH = -1000, p = -1;
+            for(let i = Math.floor(60/res); i < Math.floor(400/res); i++) {
+                let h = bData[i] + 0.8*(bData[i*2]||-100) + 0.6*(bData[i*3]||-100);
+                if(h > mH) { mH = h; p = i; }
+            }
+            if(Math.max(...bData) > -90) {
+                let f = p * res;
+                hDisp.textContent = Math.round(f) + " Hz";
+                let n = 12 * (Math.log(f/440)/Math.log(2)) + 69;
+                nDisp.textContent = notes[Math.round(n)%12] + (Math.floor(Math.round(n)/12)-1);
+                let d = 12 * Math.log2(f/breakFreq);
+                circ.style.backgroundColor = d < -0.5 ? "#00ff00" : d > 0.5 ? "#ff0000" : "#ffff00";
+            }
+            requestAnimationFrame(loop);
+        }
+
+        const upS = () => document.getElementById('sens-val').textContent = 'x' + sens.value;
+        document.getElementById('s-10').onclick = () => { sens.value -= 10; upS(); };
+        document.getElementById('s-1').onclick = () => { sens.value -= 1; upS(); };
+        document.getElementById('s+1').onclick = () => { sens.value = parseInt(sens.value)+1; upS(); };
+        document.getElementById('s+10').onclick = () => { sens.value = parseInt(sens.value)+10; upS(); };
+        sens.oninput = upS;
+
+    </script>
+</body>
+</html>
