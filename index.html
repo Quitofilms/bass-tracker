@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v2.4</title>
+    <title>Bass Tracker v2.5</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -79,6 +79,8 @@
             align-items: center;
             background: #111;
             border-top: 1px solid #333;
+            /* BUFFER ZONE OUTSIDE THE CONTROL BOX */
+            padding-bottom: 40px; 
             scrollbar-width: thin;
             scrollbar-color: #333 #111;
         }
@@ -87,7 +89,6 @@
         #scroll-content::-webkit-scrollbar-track { background: #111; }
         #scroll-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
-        /* REDUCED DIAMETER BY HALF (220px -> 110px) */
         #circle {
             width: 110px;
             height: 110px;
@@ -108,7 +109,8 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            padding-bottom: 40px; 
+            /* Internal padding removed as requested */
+            padding-bottom: 0; 
         }
 
         .sens-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; }
@@ -141,7 +143,7 @@
 
     <div id="header-row">
         <button id="refresh-btn">Sync Version</button>
-        <div id="version-tag">v2.4</div>
+        <div id="version-tag">v2.5</div>
     </div>
 
     <div id="calibration-container">
@@ -242,7 +244,7 @@
                 const devs = await navigator.mediaDevices.enumerateDevices();
                 mSel.innerHTML = '';
                 devs.filter(d => d.kind === 'audioinput').forEach(d => {
-                    const o = document.createElement('option'); o.value = d.deviceId; o.text = d.label || 'Mic'; mSel.appendChild(o);
+                    const o = document.createElement('option'); o.value = d.deviceId; o.text = d.label || 'Mic'; micSelect.appendChild(o);
                 });
 
                 sBtn.textContent = "Stop Listening"; sBtn.classList.add('stop-active');
