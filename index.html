@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v2.1</title>
+    <title>Bass Tracker v2.2</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -19,7 +19,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Prevent body scroll, we use internal scroll */
+            overflow: hidden; 
             user-select: none;
         }
 
@@ -37,7 +37,7 @@
             cursor: pointer;
         }
 
-        /* FIXED TOP */
+        /* FIXED TOP CALIBRATION */
         #calibration-container {
             height: 80px;
             flex-shrink: 0;
@@ -59,30 +59,29 @@
         .cal-yellow { color: #ffff00; transform: scale(1.1); z-index: 10; }
         .cal-red { color: #ff0000; opacity: 0.5; }
 
-        /* SCROLLABLE MIDDLE (The Blue Square Area) */
+        /* SCROLLABLE CONTAINER (Now includes the button) */
         #scroll-content {
             flex-grow: 1;
-            overflow-y: auto; /* Adds the vertical scroll bar if needed */
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 10px 0;
             background: #111;
             border-top: 1px solid #333;
-            scrollbar-width: thin; /* Thin scrollbar for modern browsers */
+            scrollbar-width: thin;
             scrollbar-color: #333 #111;
         }
 
-        /* Webkit scrollbar styling */
         #scroll-content::-webkit-scrollbar { width: 6px; }
         #scroll-content::-webkit-scrollbar-track { background: #111; }
         #scroll-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
         #circle {
-            width: 200px;
-            height: 200px;
+            width: 220px;
+            height: 220px;
             border-radius: 50%;
             background-color: #333;
+            margin-top: 10px;
             margin-bottom: 10px;
             flex-shrink: 0;
         }
@@ -93,42 +92,35 @@
 
         #controls-group {
             width: 90%;
+            max-width: 500px;
             display: flex;
             flex-direction: column;
             gap: 12px;
-            padding-bottom: 20px; /* Space so meter isn't on the edge */
+            padding-bottom: 30px; /* Space for thumb comfort at the bottom of scroll */
         }
 
         .sens-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; }
         .adj-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 12px 0; border-radius: 8px; font-weight: bold; }
         
-        select { background: #222; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; width: 100%; font-size: 14px;}
+        select { background: #222; color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; width: 100%; font-size: 14px;}
 
-        #meter-container { height: 16px; background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #444; position: relative; }
+        #meter-container { height: 18px; background: #222; border-radius: 9px; overflow: hidden; border: 1px solid #444; position: relative; }
         #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
         #db-text { position: absolute; right: 10px; top: 1px; font-size: 10px; color: #fff; font-family: monospace; }
 
-        /* FIXED ACTION BUTTON (Bottom) */
-        #action-container {
-            height: 80px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            background: #111;
-            border-top: 1px solid #222;
-        }
-
+        /* THE START/STOP BUTTON (Inside the Scroll Group) */
         #start-btn {
             width: 100%;
-            height: 60px;
+            height: 64px;
+            margin-top: 10px;
             background: #2196F3;
             color: white;
             border: none;
             border-radius: 12px;
             font-size: 20px;
             font-weight: bold;
+            flex-shrink: 0;
         }
         #start-btn.stop-active { background: #f44336; }
 
@@ -162,11 +154,9 @@
                 <div id="meter-fill"></div>
                 <div id="db-text">-- dB</div>
             </div>
-        </div>
-    </div>
 
-    <div id="action-container">
-        <button id="start-btn">Start Listening</button>
+            <button id="start-btn">Start Listening</button>
+        </div>
     </div>
 
     <script>
@@ -181,7 +171,7 @@
             });
         }
 
-        // CALIBRATION
+        // CALIBRATION (E2-C5)
         let breakFreq = 261.63;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const strip = document.getElementById('calibration-strip');
