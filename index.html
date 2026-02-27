@@ -23,30 +23,34 @@
             user-select: none;
         }
 
+        /* DOUBLED HEADER HEIGHT AND YELLOW VISIBILITY */
         #header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 5px 10px;
+            padding: 0 15px;
             background: #000;
-            height: 30px;
-            border-bottom: 1px solid #222;
+            height: 60px; /* Doubled from 30px */
+            flex-shrink: 0;
+            border-bottom: 1px solid #333;
         }
 
         #refresh-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: #777;
-            border: 1px solid #333;
-            border-radius: 4px;
-            font-size: 10px;
-            padding: 2px 8px;
+            background: rgba(255, 255, 0, 0.1);
+            color: #FFFF00; /* Yellow Visibility */
+            border: 2px solid #FFFF00;
+            border-radius: 6px;
+            font-size: 20px; /* Doubled from 10px */
+            padding: 6px 12px;
             cursor: pointer;
+            font-weight: bold;
         }
 
         #version-tag {
-            font-size: 10px;
-            color: #555;
+            font-size: 20px; /* Doubled from 10px */
+            color: #FFFF00; /* Yellow Visibility */
             font-family: monospace;
+            font-weight: bold;
         }
 
         #calibration-container {
@@ -129,7 +133,7 @@
 
     <div id="header-row">
         <button id="refresh-btn">Sync Version</button>
-        <div id="version-tag">v2.7</div>
+        <div id="version-tag">v2.8</div>
     </div>
 
     <div id="calibration-container">
@@ -219,7 +223,6 @@
             if(!running) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 if (ctx.state === 'suspended') await ctx.resume();
-                // Audio optimizations disabled for raw vocal capture
                 stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
                 mic = ctx.createMediaStreamSource(stream);
                 bAnl = ctx.createAnalyser(); bAnl.fftSize = 32768;
@@ -246,7 +249,6 @@
         function loop() {
             if(!running) return;
 
-            // RMS / VOLUME METER CALCULATION
             vAnl.getFloatTimeDomainData(vData);
             let s = 0; for(let a of vData) s += a*a;
             let rms = Math.sqrt(s/vData.length);
@@ -254,7 +256,7 @@
             mFill.style.width = Math.min(Math.sqrt(rms * sens.value), 1) * 100 + "%";
             document.getElementById('db-text').textContent = Math.round(20*Math.log10(rms)) + " dB";
 
-            // NOISE GATE: Surgical intervention to stop ghost notes in silence
+            // NOISE GATE at 0.0005
             if (rms < 0.0005) {
                 hDisp.textContent = "-- Hz";
                 nDisp.textContent = "Silence";
@@ -263,7 +265,6 @@
                 return;
             }
 
-            // PITCH DETECTION (HPS)
             bAnl.getFloatFrequencyData(bData);
             const res = ctx.sampleRate / bAnl.fftSize;
             let mH = -1000, p = -1;
