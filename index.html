@@ -255,7 +255,7 @@
             document.getElementById('db-text').textContent = Math.round(20*Math.log10(rms)) + " dB";
 
             // NOISE GATE: Surgical intervention to stop ghost notes in silence
-            if (rms < 0.003) {
+            if (rms < 0.0005) {
                 hDisp.textContent = "-- Hz";
                 nDisp.textContent = "Silence";
                 circ.style.backgroundColor = "#333";
