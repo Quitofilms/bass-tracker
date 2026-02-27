@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v2.8</title>
+    <title>Bass Tracker v2.9</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -23,32 +23,31 @@
             user-select: none;
         }
 
-        /* DOUBLED HEADER HEIGHT AND YELLOW VISIBILITY */
         #header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 0 15px;
             background: #000;
-            height: 60px; /* Doubled from 30px */
+            height: 60px;
             flex-shrink: 0;
             border-bottom: 1px solid #333;
         }
 
         #refresh-btn {
             background: rgba(255, 255, 0, 0.1);
-            color: #FFFF00; /* Yellow Visibility */
+            color: #FFFF00;
             border: 2px solid #FFFF00;
             border-radius: 6px;
-            font-size: 20px; /* Doubled from 10px */
+            font-size: 20px;
             padding: 6px 12px;
             cursor: pointer;
             font-weight: bold;
         }
 
         #version-tag {
-            font-size: 20px; /* Doubled from 10px */
-            color: #FFFF00; /* Yellow Visibility */
+            font-size: 20px;
+            color: #FFFF00;
             font-family: monospace;
             font-weight: bold;
         }
@@ -92,9 +91,10 @@
             margin-bottom: 15px;
         }
 
-        #hz-display { font-size: 20px; color: #888; }
+        /* UPDATED TO BRIGHT YELLOW */
+        #hz-display { font-size: 20px; color: #FFFF00; font-weight: bold; }
         #note-display { font-size: 60px; font-weight: 900; line-height: 1; margin: 5px 0; }
-        #status { font-size: 14px; color: #555; margin-bottom: 15px; }
+        #status { font-size: 16px; color: #FFFF00; margin-bottom: 15px; font-weight: bold; }
 
         #controls-group {
             width: 90%;
@@ -104,15 +104,18 @@
             gap: 12px;
         }
 
-        .sens-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; }
+        /* UPDATED TO BRIGHT YELLOW */
+        .sens-header { display: flex; justify-content: space-between; font-size: 14px; color: #FFFF00; font-weight: bold; }
         .adj-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .adj-btn { background: #333; border: 1px solid #444; color: white; padding: 12px 0; border-radius: 8px; font-weight: bold; }
+        .adj-btn { background: #333; border: 1px solid #FFFF00; color: #FFFF00; padding: 12px 0; border-radius: 8px; font-weight: bold; }
         
-        select { background: #222; color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; width: 100%; font-size: 14px;}
+        select { background: #222; color: #FFFF00; border: 1px solid #FFFF00; padding: 12px; border-radius: 8px; width: 100%; font-size: 14px; font-weight: bold; }
 
-        #meter-container { height: 18px; background: #222; border-radius: 9px; overflow: hidden; border: 1px solid #444; position: relative; }
+        #meter-container { height: 18px; background: #222; border-radius: 9px; overflow: hidden; border: 1px solid #FFFF00; position: relative; }
         #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
-        #db-text { position: absolute; right: 10px; top: 1px; font-size: 10px; color: #fff; font-family: monospace; }
+        
+        /* UPDATED TO BRIGHT YELLOW */
+        #db-text { position: absolute; right: 10px; top: 1px; font-size: 12px; color: #FFFF00; font-family: monospace; font-weight: bold; }
 
         #start-btn {
             width: 100%;
@@ -133,7 +136,7 @@
 
     <div id="header-row">
         <button id="refresh-btn">Sync Version</button>
-        <div id="version-tag">v2.8</div>
+        <div id="version-tag">v2.9</div>
     </div>
 
     <div id="calibration-container">
