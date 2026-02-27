@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bass-tracker-v1.9'; // Updated version number
+const CACHE_NAME = 'bass-tracker-v2.7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
