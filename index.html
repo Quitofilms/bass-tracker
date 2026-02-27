@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>Bass Tracker v3.0</title>
+    <title>Bass Tracker Auto-Build</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -46,10 +46,11 @@
         }
 
         #version-tag {
-            font-size: 20px;
+            font-size: 14px; /* Slightly smaller to fit full timestamp */
             color: #FFFF00;
             font-family: monospace;
             font-weight: bold;
+            text-align: right;
         }
 
         #calibration-container {
@@ -91,7 +92,6 @@
             margin-bottom: 15px;
         }
 
-        /* UPDATED TO BRIGHT YELLOW */
         #hz-display { font-size: 20px; color: #FFFF00; font-weight: bold; }
         #note-display { font-size: 60px; font-weight: 900; line-height: 1; margin: 5px 0; }
         #status { font-size: 16px; color: #FFFF00; margin-bottom: 15px; font-weight: bold; }
@@ -104,7 +104,6 @@
             gap: 12px;
         }
 
-        /* UPDATED TO BRIGHT YELLOW */
         .sens-header { display: flex; justify-content: space-between; font-size: 14px; color: #FFFF00; font-weight: bold; }
         .adj-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         .adj-btn { background: #333; border: 1px solid #FFFF00; color: #FFFF00; padding: 12px 0; border-radius: 8px; font-weight: bold; }
@@ -113,8 +112,6 @@
 
         #meter-container { height: 18px; background: #222; border-radius: 9px; overflow: hidden; border: 1px solid #FFFF00; position: relative; }
         #meter-fill { height: 100%; width: 0%; background: linear-gradient(to right, #4CAF50, #FFEB3B, #F44336); }
-        
-        /* UPDATED TO BRIGHT YELLOW */
         #db-text { position: absolute; right: 10px; top: 1px; font-size: 12px; color: #FFFF00; font-family: monospace; font-weight: bold; }
 
         #start-btn {
@@ -136,7 +133,7 @@
 
     <div id="header-row">
         <button id="refresh-btn">Sync Version</button>
-        <div id="version-tag">v3.0</div>
+        <div id="version-tag">Build:<br><span id="build-time">Loading...</span></div>
     </div>
 
     <div id="calibration-container">
@@ -169,6 +166,9 @@
     </div>
 
     <script>
+        // Set Build Time immediately on load
+        document.getElementById('build-time').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
         // PWA REGISTRATION
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { 
@@ -196,7 +196,8 @@
                 strip.appendChild(el);
                 notesEls.push(el);
             }
-            updateT(-((60-40)*NOTE_WIDTH) - 35);
+            // Centering on MIDI 48 (C3) instead of MIDI 60 (C4)
+            updateT(-((48-40)*NOTE_WIDTH) - 35);
             
             const move = (e) => { if(!isDrag) return; let x = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; updateT(startT + (x - startX)); };
             const end = () => { isDrag = false; let snap = Math.round((-currentT - 35)/NOTE_WIDTH); updateT(-(snap*NOTE_WIDTH)-35); };
@@ -251,21 +252,16 @@
 
         function loop() {
             if(!running) return;
-
             vAnl.getFloatTimeDomainData(vData);
             let s = 0; for(let a of vData) s += a*a;
             let rms = Math.sqrt(s/vData.length);
-            
             mFill.style.width = Math.min(Math.sqrt(rms * sens.value), 1) * 100 + "%";
             document.getElementById('db-text').textContent = Math.round(20*Math.log10(rms)) + " dB";
 
             // NOISE GATE at 0.0005
             if (rms < 0.0005) {
-                hDisp.textContent = "-- Hz";
-                nDisp.textContent = "Silence";
-                circ.style.backgroundColor = "#333";
-                requestAnimationFrame(loop);
-                return;
+                hDisp.textContent = "-- Hz"; nDisp.textContent = "Silence"; circ.style.backgroundColor = "#333";
+                requestAnimationFrame(loop); return;
             }
 
             bAnl.getFloatFrequencyData(bData);
@@ -275,7 +271,6 @@
                 let h = bData[i] + 0.8*(bData[i*2]||-100) + 0.6*(bData[i*3]||-100);
                 if(h > mH) { mH = h; p = i; }
             }
-            
             if(Math.max(...bData) > -90) {
                 let f = p * res;
                 hDisp.textContent = Math.round(f) + " Hz";
@@ -293,7 +288,6 @@
         document.getElementById('s+1').onclick = () => { sens.value = parseInt(sens.value)+1; upS(); };
         document.getElementById('s+10').onclick = () => { sens.value = parseInt(sens.value)+10; upS(); };
         sens.oninput = upS;
-
     </script>
 </body>
 </html>
