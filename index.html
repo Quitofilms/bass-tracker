@@ -39,14 +39,22 @@
             color: #FFFF00;
             border: 2px solid #FFFF00;
             border-radius: 6px;
-            font-size: 20px;
-            padding: 6px 12px;
+            font-size: 16px; 
+            padding: 4px 8px;
             cursor: pointer;
             font-weight: bold;
         }
 
+        #pwa-status {
+            font-size: 12px;
+            color: #FFFF00;
+            font-weight: bold;
+            text-align: center;
+            max-width: 80px;
+        }
+
         #version-tag {
-            font-size: 14px; /* Slightly smaller to fit full timestamp */
+            font-size: 12px;
             color: #FFFF00;
             font-family: monospace;
             font-weight: bold;
@@ -126,13 +134,13 @@
             font-weight: bold;
         }
         #start-btn.stop-active { background: #f44336; }
-
     </style>
 </head>
 <body>
 
     <div id="header-row">
         <button id="refresh-btn">Sync Version</button>
+        <div id="pwa-status">PWA:<br>Checking...</div>
         <div id="version-tag">Build:<br><span id="build-time">Loading...</span></div>
     </div>
 
@@ -166,16 +174,31 @@
     </div>
 
     <script>
-        // Set Build Time immediately on load
         document.getElementById('build-time').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-        // PWA REGISTRATION
+        // PWA REGISTRATION WITH STATUS UPDATES
         if ('serviceWorker' in navigator) {
+            const statusEl = document.getElementById('pwa-status');
             window.addEventListener('load', () => { 
                 navigator.serviceWorker.register('./sw.js').then(reg => {
                     document.getElementById('refresh-btn').onclick = () => {
                         reg.update().then(() => { window.location.reload(); });
                     };
+
+                    // Check initial status
+                    if (reg.active) statusEl.textContent = "PWA:\nReady";
+                    
+                    reg.onupdatefound = () => {
+                        statusEl.textContent = "PWA:\nUpdating...";
+                        const installingWorker = reg.installing;
+                        installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'activated') {
+                                statusEl.textContent = "PWA:\nReady";
+                            }
+                        };
+                    };
+                }).catch(() => {
+                    statusEl.textContent = "PWA:\nOffline Error";
                 });
             });
         }
@@ -196,7 +219,6 @@
                 strip.appendChild(el);
                 notesEls.push(el);
             }
-            // Centering on MIDI 48 (C3) instead of MIDI 60 (C4)
             updateT(-((48-40)*NOTE_WIDTH) - 35);
             
             const move = (e) => { if(!isDrag) return; let x = e.type.includes('mouse') ? e.pageX : e.touches[0].pageX; updateT(startT + (x - startX)); };
@@ -258,7 +280,6 @@
             mFill.style.width = Math.min(Math.sqrt(rms * sens.value), 1) * 100 + "%";
             document.getElementById('db-text').textContent = Math.round(20*Math.log10(rms)) + " dB";
 
-            // NOISE GATE at 0.0005
             if (rms < 0.0005) {
                 hDisp.textContent = "-- Hz"; nDisp.textContent = "Silence"; circ.style.backgroundColor = "#333";
                 requestAnimationFrame(loop); return;
